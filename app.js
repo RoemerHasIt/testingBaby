@@ -850,49 +850,179 @@ function renderHistory() {
 // Stats Tab
 // ============================================
 let volumeChart, frequencyChart, muscleChart;
+let statsPeriod = 'week';
 
-function renderStats() {
-    const completed = appData.workouts.filter(w => w.completed);
+// Period helpers
+function getDateNDaysAgo(n) {
+    const d = new Date();
+    d.setDate(d.getDate() - n);
+    return d.toISOString().split('T')[0];
+}
 
-    document.getElementById('totalWorkouts').textContent = completed.length;
+function getWorkoutsInRange(startDate, endDate) {
+    return appData.workouts.filter(w => w.completed && w.date >= startDate && w.date <= endDate);
+}
 
-    // Streak: count consecutive training days with completed workouts
-    let streak = 0;
-    const completedDates = new Set(completed.map(w => w.date));
+function getVolumeForWorkouts(workouts) {
+    let vol = 0;
+    workouts.forEach(w => {
+        Object.values(w.exercises).forEach(ex => {
+            if (ex.sets) vol += ex.sets.reduce((s, set) => s + (set.weight * set.reps), 0);
+        });
+    });
+    return vol;
+}
+
+function getAvgRPE(workouts) {
+    let total = 0, count = 0;
+    workouts.forEach(w => {
+        Object.values(w.exercises).forEach(ex => {
+            if (ex.rpe) { total += ex.rpe; count++; }
+        });
+    });
+    return count > 0 ? (total / count) : 0;
+}
+
+function getCurrentStreak() {
+    const completedDates = new Set(appData.workouts.filter(w => w.completed).map(w => w.date));
     const trainingDays = appData.profile.trainingDays;
+    let streak = 0;
     let checkDate = new Date(getTodayString() + 'T12:00:00');
-
     for (let i = 0; i < 365; i++) {
         const dateStr = checkDate.toISOString().split('T')[0];
-        const isTrainingDay = trainingDays.includes(checkDate.getDay());
-
-        if (isTrainingDay) {
-            if (completedDates.has(dateStr)) {
-                streak++;
-            } else if (i > 0) {
-                break;
-            }
+        if (trainingDays.includes(checkDate.getDay())) {
+            if (completedDates.has(dateStr)) streak++;
+            else if (i > 0) break;
         }
         checkDate.setDate(checkDate.getDate() - 1);
     }
-    document.getElementById('currentStreak').textContent = streak;
+    return streak;
+}
 
-    let totalVol = 0;
-    completed.forEach(w => {
+function formatChange(current, previous, unit) {
+    if (!previous || previous === 0) return '';
+    const diff = current - previous;
+    const pct = Math.round((diff / previous) * 100);
+    if (diff === 0) return '<span class="change-neutral">gelijk</span>';
+    const arrow = diff > 0 ? '&#9650;' : '&#9660;';
+    const cls = diff > 0 ? 'change-up' : 'change-down';
+    return `<span class="${cls}">${arrow} ${Math.abs(pct)}% vs vorige ${unit}</span>`;
+}
+
+// Stats toggle buttons
+document.querySelectorAll('.stats-toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.stats-toggle-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        statsPeriod = btn.dataset.period;
+        renderStats();
+    });
+});
+
+function renderStats() {
+    const today = getTodayString();
+    let currentStart, prevStart, prevEnd, periodLabel;
+
+    if (statsPeriod === 'week') {
+        currentStart = getDateNDaysAgo(6);
+        prevStart = getDateNDaysAgo(13);
+        prevEnd = getDateNDaysAgo(7);
+        periodLabel = 'week';
+    } else if (statsPeriod === 'month') {
+        currentStart = getDateNDaysAgo(29);
+        prevStart = getDateNDaysAgo(59);
+        prevEnd = getDateNDaysAgo(30);
+        periodLabel = 'maand';
+    } else {
+        currentStart = '2000-01-01';
+        prevStart = null;
+        prevEnd = null;
+        periodLabel = 'totaal';
+    }
+
+    const currentWorkouts = getWorkoutsInRange(currentStart, today);
+    const prevWorkouts = prevStart ? getWorkoutsInRange(prevStart, prevEnd) : [];
+
+    const curVol = getVolumeForWorkouts(currentWorkouts);
+    const prevVol = getVolumeForWorkouts(prevWorkouts);
+    const curRPE = getAvgRPE(currentWorkouts);
+    const prevRPE = getAvgRPE(prevWorkouts);
+    const streak = getCurrentStreak();
+
+    // Comparison cards
+    document.getElementById('compWorkouts').textContent = currentWorkouts.length;
+    document.getElementById('compVolume').textContent = curVol.toLocaleString('nl-NL');
+    document.getElementById('compRPE').textContent = curRPE > 0 ? curRPE.toFixed(1) : '-';
+    document.getElementById('compStreak').textContent = streak;
+    document.getElementById('compStreakLabel').textContent = 'dagen';
+
+    if (statsPeriod !== 'all') {
+        document.getElementById('compWorkoutsChange').innerHTML = formatChange(currentWorkouts.length, prevWorkouts.length, periodLabel);
+        document.getElementById('compVolumeChange').innerHTML = formatChange(curVol, prevVol, periodLabel);
+        if (curRPE && prevRPE) {
+            const rpeDiff = curRPE - prevRPE;
+            if (Math.abs(rpeDiff) < 0.2) {
+                document.getElementById('compRPEChange').innerHTML = '<span class="change-neutral">stabiel</span>';
+            } else {
+                const cls = rpeDiff < 0 ? 'change-up' : 'change-down';
+                document.getElementById('compRPEChange').innerHTML = `<span class="${cls}">${rpeDiff > 0 ? '&#9650;' : '&#9660;'} ${Math.abs(rpeDiff).toFixed(1)} vs vorige ${periodLabel}</span>`;
+            }
+        } else {
+            document.getElementById('compRPEChange').innerHTML = '';
+        }
+    } else {
+        document.getElementById('compWorkoutsChange').innerHTML = '';
+        document.getElementById('compVolumeChange').innerHTML = '';
+        document.getElementById('compRPEChange').innerHTML = '';
+    }
+
+    // Top exercises (by total volume in current period)
+    renderTopExercises(currentWorkouts);
+
+    // Charts use all data
+    const allCompleted = appData.workouts.filter(w => w.completed);
+    renderVolumeChart(allCompleted);
+    renderFrequencyChart(allCompleted);
+    renderMuscleChart(allCompleted);
+}
+
+function renderTopExercises(workouts) {
+    const exMap = {};
+    workouts.forEach(w => {
         Object.values(w.exercises).forEach(ex => {
-            totalVol += calcVolume(ex.sets);
+            if (!ex.sets) return;
+            if (!exMap[ex.name]) exMap[ex.name] = { vol: 0, maxWeight: 0, sessions: 0 };
+            exMap[ex.name].vol += ex.sets.reduce((s, set) => s + (set.weight * set.reps), 0);
+            exMap[ex.name].maxWeight = Math.max(exMap[ex.name].maxWeight, ...ex.sets.map(s => s.weight));
+            exMap[ex.name].sessions++;
         });
     });
-    document.getElementById('totalVolume').textContent = totalVol.toLocaleString('nl-NL');
 
-    const avgEx = completed.length > 0
-        ? (completed.reduce((sum, w) => sum + Object.keys(w.exercises).length, 0) / completed.length).toFixed(1)
-        : 0;
-    document.getElementById('avgExercises').textContent = avgEx;
+    const sorted = Object.entries(exMap).sort((a, b) => b[1].vol - a[1].vol).slice(0, 5);
+    const list = document.getElementById('topExercisesList');
+    if (!list) return;
 
-    renderVolumeChart(completed);
-    renderFrequencyChart(completed);
-    renderMuscleChart(completed);
+    if (sorted.length === 0) {
+        list.innerHTML = '<p class="empty-state" style="padding:16px;">Nog geen data</p>';
+        return;
+    }
+
+    const maxVol = sorted[0][1].vol || 1;
+    list.innerHTML = sorted.map(([name, data], i) => `
+        <div class="top-exercise-item">
+            <span class="top-exercise-rank">#${i + 1}</span>
+            <div class="top-exercise-info">
+                <span class="top-exercise-name">${name}</span>
+                <div class="top-exercise-bar-bg">
+                    <div class="top-exercise-bar" style="width: ${(data.vol / maxVol * 100)}%"></div>
+                </div>
+            </div>
+            <div class="top-exercise-stats">
+                <span>${data.vol.toLocaleString('nl-NL')} kg</span>
+                <span class="top-exercise-max">max ${data.maxWeight} kg</span>
+            </div>
+        </div>
+    `).join('');
 }
 
 function getWeekLabel(dateStr) {
@@ -908,7 +1038,7 @@ function renderVolumeChart(completed) {
         const week = getWeekLabel(w.date);
         if (!weekData[week]) weekData[week] = 0;
         Object.values(w.exercises).forEach(ex => {
-            weekData[week] += calcVolume(ex.sets);
+            if (ex.sets) weekData[week] += calcVolume(ex.sets);
         });
     });
 
@@ -916,7 +1046,9 @@ function renderVolumeChart(completed) {
     const data = labels.map(l => weekData[l]);
 
     if (volumeChart) volumeChart.destroy();
-    volumeChart = new Chart(document.getElementById('volumeChart'), {
+    const el = document.getElementById('volumeChart');
+    if (!el) return;
+    volumeChart = new Chart(el, {
         type: 'bar',
         data: {
             labels,
@@ -952,7 +1084,9 @@ function renderFrequencyChart(completed) {
     const data = labels.map(l => weekData[l]);
 
     if (frequencyChart) frequencyChart.destroy();
-    frequencyChart = new Chart(document.getElementById('frequencyChart'), {
+    const el = document.getElementById('frequencyChart');
+    if (!el) return;
+    frequencyChart = new Chart(el, {
         type: 'line',
         data: {
             labels,
@@ -990,7 +1124,9 @@ function renderMuscleChart(completed) {
     const colors = ['#6C63FF', '#2CB67D', '#FF8906', '#FF6584', '#E8D44D', '#94A1B2'];
 
     if (muscleChart) muscleChart.destroy();
-    muscleChart = new Chart(document.getElementById('muscleChart'), {
+    const el = document.getElementById('muscleChart');
+    if (!el) return;
+    muscleChart = new Chart(el, {
         type: 'doughnut',
         data: {
             labels,

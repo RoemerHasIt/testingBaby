@@ -183,26 +183,46 @@
 
         <!-- STATS TAB -->
         <section id="stats" class="tab-content">
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <span class="stat-value" id="totalWorkouts">0</span>
-                    <span class="stat-label">Workouts</span>
+            <!-- Period toggle -->
+            <div class="stats-toggle">
+                <button class="stats-toggle-btn active" data-period="week">Deze Week</button>
+                <button class="stats-toggle-btn" data-period="month">Deze Maand</button>
+                <button class="stats-toggle-btn" data-period="all">Totaal</button>
+            </div>
+
+            <!-- Period comparison cards -->
+            <div class="comparison-grid" id="comparisonGrid">
+                <div class="comparison-card">
+                    <span class="comparison-label">Workouts</span>
+                    <span class="comparison-value" id="compWorkouts">0</span>
+                    <span class="comparison-change" id="compWorkoutsChange"></span>
                 </div>
-                <div class="stat-card">
-                    <span class="stat-value" id="currentStreak">0</span>
-                    <span class="stat-label">Streak (dagen)</span>
+                <div class="comparison-card">
+                    <span class="comparison-label">Volume (kg)</span>
+                    <span class="comparison-value" id="compVolume">0</span>
+                    <span class="comparison-change" id="compVolumeChange"></span>
                 </div>
-                <div class="stat-card">
-                    <span class="stat-value" id="totalVolume">0</span>
-                    <span class="stat-label">Totaal Volume (kg)</span>
+                <div class="comparison-card">
+                    <span class="comparison-label">Gem. RPE</span>
+                    <span class="comparison-value" id="compRPE">-</span>
+                    <span class="comparison-change" id="compRPEChange"></span>
                 </div>
-                <div class="stat-card">
-                    <span class="stat-value" id="avgExercises">0</span>
-                    <span class="stat-label">Gem. Oefeningen/Workout</span>
+                <div class="comparison-card">
+                    <span class="comparison-label">Streak</span>
+                    <span class="comparison-value" id="compStreak">0</span>
+                    <span class="comparison-change" id="compStreakLabel">dagen</span>
                 </div>
             </div>
+
+            <!-- Top exercises -->
+            <div class="stats-section" id="topExercisesSection">
+                <h3 class="stats-section-title">Top Oefeningen</h3>
+                <div id="topExercisesList" class="top-exercises-list"></div>
+            </div>
+
+            <!-- Charts -->
             <div class="chart-container">
-                <h3>Volume per Week</h3>
+                <h3>Volume Trend</h3>
                 <canvas id="volumeChart"></canvas>
             </div>
             <div class="chart-container">

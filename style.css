@@ -753,24 +753,59 @@ header {
 .modal-actions .btn-primary { margin-top: 0; flex: 1; }
 
 /* Stats */
-.stats-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    margin-bottom: 24px;
+.stats-toggle {
+    display: flex;
+    gap: 4px;
+    background: var(--bg-card);
+    padding: 4px;
+    border-radius: var(--radius);
+    margin-bottom: 16px;
 }
 
-.stat-card {
+.stats-toggle-btn {
+    flex: 1;
+    padding: 8px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.stats-toggle-btn.active {
+    background: var(--primary);
+    color: var(--text);
+}
+
+.comparison-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.comparison-card {
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 20px 16px;
-    text-align: center;
+    padding: 14px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
 }
 
-.stat-value {
-    display: block;
-    font-size: 1.8rem;
+.comparison-label {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.comparison-value {
+    font-size: 1.5rem;
     font-weight: 800;
     background: linear-gradient(135deg, var(--primary), var(--accent));
     -webkit-background-clip: text;
@@ -778,11 +813,91 @@ header {
     background-clip: text;
 }
 
-.stat-label {
-    font-size: 0.75rem;
+.comparison-change {
+    font-size: 0.7rem;
+    font-weight: 600;
+    min-height: 16px;
+}
+
+.change-up { color: var(--success); }
+.change-down { color: var(--accent); }
+.change-neutral { color: var(--text-muted); }
+
+/* Top exercises */
+.stats-section {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.stats-section-title {
+    font-size: 0.85rem;
     color: var(--text-muted);
-    margin-top: 4px;
+    font-weight: 600;
+    margin-bottom: 12px;
+}
+
+.top-exercises-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.top-exercise-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.top-exercise-rank {
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: var(--primary);
+    min-width: 22px;
+}
+
+.top-exercise-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.top-exercise-name {
+    font-size: 0.8rem;
+    font-weight: 600;
     display: block;
+    margin-bottom: 4px;
+}
+
+.top-exercise-bar-bg {
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+}
+
+.top-exercise-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary), var(--accent));
+    border-radius: 2px;
+    transition: width 0.4s ease;
+}
+
+.top-exercise-stats {
+    text-align: right;
+    flex-shrink: 0;
+}
+
+.top-exercise-stats span {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.top-exercise-max {
+    color: var(--text-muted);
+    font-weight: 500 !important;
+    font-size: 0.65rem !important;
 }
 
 .chart-container {
