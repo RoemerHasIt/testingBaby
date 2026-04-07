@@ -1315,39 +1315,73 @@ document.getElementById('resetProfileBtn')?.addEventListener('click', () => {
 // ============================================
 // Badge / Achievement System
 // ============================================
-const BADGES = [
-    // Streak badges
-    { id: 'streak_3',  icon: '&#x1F525;', name: 'Op Stoom',        desc: '3 workouts op rij', category: 'Streak',  check: d => calcStreak(d) >= 3 },
-    { id: 'streak_5',  icon: '&#x26A1;',  name: 'Onverstoorbaar',  desc: '5 workouts op rij', category: 'Streak',  check: d => calcStreak(d) >= 5 },
-    { id: 'streak_10', icon: '&#x1F3C6;', name: 'Machine',         desc: '10 workouts op rij',category: 'Streak',  check: d => calcStreak(d) >= 10 },
-    { id: 'streak_25', icon: '&#x1F48E;', name: 'Legende',         desc: '25 workouts op rij',category: 'Streak',  check: d => calcStreak(d) >= 25 },
+// SVG badge icon generator
+function badgeSVG(shape, color1, color2, symbol) {
+    const bg = shape === 'circle'
+        ? `<circle cx="24" cy="24" r="22" fill="url(#g)" stroke="${color1}" stroke-width="1.5"/>`
+        : shape === 'hex'
+        ? `<polygon points="24,2 44,14 44,34 24,46 4,34 4,14" fill="url(#g)" stroke="${color1}" stroke-width="1.5"/>`
+        : `<rect x="3" y="3" width="42" height="42" rx="10" fill="url(#g)" stroke="${color1}" stroke-width="1.5"/>`;
+    return `<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${color1}" stop-opacity="0.25"/><stop offset="100%" stop-color="${color2}" stop-opacity="0.1"/></linearGradient></defs>${bg}<text x="24" y="30" text-anchor="middle" font-size="20" fill="${color1}">${symbol}</text></svg>`;
+}
 
-    // Total workouts
-    { id: 'total_1',   icon: '&#x1F44A;', name: 'Eerste Stap',     desc: 'Eerste workout voltooid',    category: 'Workouts', check: d => completedCount(d) >= 1 },
-    { id: 'total_10',  icon: '&#x1F4AA;', name: 'Doorzetter',      desc: '10 workouts voltooid',       category: 'Workouts', check: d => completedCount(d) >= 10 },
-    { id: 'total_25',  icon: '&#x1F3CB;', name: 'Gym Rat',         desc: '25 workouts voltooid',       category: 'Workouts', check: d => completedCount(d) >= 25 },
-    { id: 'total_50',  icon: '&#x1F947;', name: 'Half Centurion',  desc: '50 workouts voltooid',       category: 'Workouts', check: d => completedCount(d) >= 50 },
-    { id: 'total_100', icon: '&#x1F451;', name: 'Centurion',       desc: '100 workouts voltooid',      category: 'Workouts', check: d => completedCount(d) >= 100 },
-
-    // Volume badges
-    { id: 'vol_1k',    icon: '&#x1F4A5;', name: '1 Ton Club',      desc: '1.000 kg totaal volume',     category: 'Volume', check: d => totalVolume(d) >= 1000 },
-    { id: 'vol_5k',    icon: '&#x1F30B;', name: 'Kracht Berg',     desc: '5.000 kg totaal volume',     category: 'Volume', check: d => totalVolume(d) >= 5000 },
-    { id: 'vol_10k',   icon: '&#x1F680;', name: 'Raket Kracht',    desc: '10.000 kg totaal volume',    category: 'Volume', check: d => totalVolume(d) >= 10000 },
-    { id: 'vol_25k',   icon: '&#x2B50;',  name: 'Volume Ster',     desc: '25.000 kg totaal volume',    category: 'Volume', check: d => totalVolume(d) >= 25000 },
-    { id: 'vol_50k',   icon: '&#x1F30D;', name: 'Wereldkracht',    desc: '50.000 kg totaal volume',    category: 'Volume', check: d => totalVolume(d) >= 50000 },
-    { id: 'vol_100k',  icon: '&#x1F311;', name: 'Titanium',        desc: '100.000 kg totaal volume',   category: 'Volume', check: d => totalVolume(d) >= 100000 },
-
-    // Weekly volume
-    { id: 'week_5k',   icon: '&#x1F4CA;', name: 'Productieve Week',desc: '5.000 kg in een week',       category: 'Wekelijks', check: d => bestWeekVolume(d) >= 5000 },
-    { id: 'week_10k',  icon: '&#x1F4C8;', name: 'Monster Week',    desc: '10.000 kg in een week',      category: 'Wekelijks', check: d => bestWeekVolume(d) >= 10000 },
-    { id: 'week_20k',  icon: '&#x1F525;', name: 'Beest Modus',     desc: '20.000 kg in een week',      category: 'Wekelijks', check: d => bestWeekVolume(d) >= 20000 },
-
+const B = {
+    // Streak
+    s3:  badgeSVG('circle', '#FF6B35', '#FF8906', '🔥'),
+    s5:  badgeSVG('circle', '#FFD700', '#FF8906', '⚡'),
+    s10: badgeSVG('hex',    '#6C63FF', '#FF6584', '🏆'),
+    s25: badgeSVG('hex',    '#FF6584', '#6C63FF', '💎'),
+    // Workouts
+    t1:  badgeSVG('circle', '#2CB67D', '#6C63FF', '👊'),
+    t10: badgeSVG('circle', '#6C63FF', '#2CB67D', '💪'),
+    t25: badgeSVG('hex',    '#FF8906', '#FF6584', '🏋'),
+    t50: badgeSVG('hex',    '#FFD700', '#FF8906', '🥇'),
+    t100:badgeSVG('hex',    '#FF6584', '#FFD700', '👑'),
+    // Volume
+    v1k: badgeSVG('rect',   '#FF6B35', '#FF8906', '💥'),
+    v5k: badgeSVG('rect',   '#FF8906', '#FFD700', '🌋'),
+    v10k:badgeSVG('hex',    '#6C63FF', '#FF6584', '🚀'),
+    v25k:badgeSVG('hex',    '#FFD700', '#FF8906', '⭐'),
+    v50k:badgeSVG('hex',    '#2CB67D', '#6C63FF', '🌍'),
+    v100:badgeSVG('hex',    '#FF6584', '#FFD700', '🌑'),
+    // Weekly
+    w5k: badgeSVG('rect',   '#6C63FF', '#2CB67D', '📊'),
+    w10k:badgeSVG('rect',   '#2CB67D', '#FFD700', '📈'),
+    w20k:badgeSVG('hex',    '#FF6B35', '#FF6584', '🔥'),
     // Variety
-    { id: 'all_types', icon: '&#x1F3AF;', name: 'All-Rounder',     desc: 'Alle split types gedaan',    category: 'Variatie', check: d => allTypesCompleted(d) },
+    ar:  badgeSVG('hex',    '#6C63FF', '#2CB67D', '🎯'),
+    // Special
+    rpe: badgeSVG('circle', '#2CB67D', '#6C63FF', '🧠'),
+    pw:  badgeSVG('hex',    '#FFD700', '#FF6584', '✨'),
+};
 
-    // Personal records
-    { id: 'first_rpe', icon: '&#x1F3AC;', name: 'Zelfkennis',      desc: 'Eerste RPE score gegeven',   category: 'Speciaal', check: d => hasAnyRPE(d) },
-    { id: 'perfect_w', icon: '&#x2728;',  name: 'Perfect Workout',  desc: 'Alle oefeningen in 1 workout', category: 'Speciaal', check: d => hasPerfectWorkout(d) },
+const BADGES = [
+    { id: 'streak_3',  svg: B.s3,  name: 'Op Stoom',        desc: '3 workouts op rij', category: 'Streak',  check: d => calcStreak(d) >= 3 },
+    { id: 'streak_5',  svg: B.s5,  name: 'Onverstoorbaar',  desc: '5 workouts op rij', category: 'Streak',  check: d => calcStreak(d) >= 5 },
+    { id: 'streak_10', svg: B.s10, name: 'Machine',         desc: '10 workouts op rij',category: 'Streak',  check: d => calcStreak(d) >= 10 },
+    { id: 'streak_25', svg: B.s25, name: 'Legende',         desc: '25 workouts op rij',category: 'Streak',  check: d => calcStreak(d) >= 25 },
+
+    { id: 'total_1',   svg: B.t1,  name: 'Eerste Stap',     desc: 'Eerste workout voltooid',    category: 'Workouts', check: d => completedCount(d) >= 1 },
+    { id: 'total_10',  svg: B.t10, name: 'Doorzetter',      desc: '10 workouts voltooid',       category: 'Workouts', check: d => completedCount(d) >= 10 },
+    { id: 'total_25',  svg: B.t25, name: 'Gym Rat',         desc: '25 workouts voltooid',       category: 'Workouts', check: d => completedCount(d) >= 25 },
+    { id: 'total_50',  svg: B.t50, name: 'Half Centurion',  desc: '50 workouts voltooid',       category: 'Workouts', check: d => completedCount(d) >= 50 },
+    { id: 'total_100', svg: B.t100,name: 'Centurion',       desc: '100 workouts voltooid',      category: 'Workouts', check: d => completedCount(d) >= 100 },
+
+    { id: 'vol_1k',    svg: B.v1k, name: '1 Ton Club',      desc: '1.000 kg totaal volume',     category: 'Volume', check: d => totalVolume(d) >= 1000 },
+    { id: 'vol_5k',    svg: B.v5k, name: 'Kracht Berg',     desc: '5.000 kg totaal volume',     category: 'Volume', check: d => totalVolume(d) >= 5000 },
+    { id: 'vol_10k',   svg: B.v10k,name: 'Raket Kracht',    desc: '10.000 kg totaal volume',    category: 'Volume', check: d => totalVolume(d) >= 10000 },
+    { id: 'vol_25k',   svg: B.v25k,name: 'Volume Ster',     desc: '25.000 kg totaal volume',    category: 'Volume', check: d => totalVolume(d) >= 25000 },
+    { id: 'vol_50k',   svg: B.v50k,name: 'Wereldkracht',    desc: '50.000 kg totaal volume',    category: 'Volume', check: d => totalVolume(d) >= 50000 },
+    { id: 'vol_100k',  svg: B.v100,name: 'Titanium',        desc: '100.000 kg totaal volume',   category: 'Volume', check: d => totalVolume(d) >= 100000 },
+
+    { id: 'week_5k',   svg: B.w5k, name: 'Productieve Week',desc: '5.000 kg in een week',       category: 'Wekelijks', check: d => bestWeekVolume(d) >= 5000 },
+    { id: 'week_10k',  svg: B.w10k,name: 'Monster Week',    desc: '10.000 kg in een week',      category: 'Wekelijks', check: d => bestWeekVolume(d) >= 10000 },
+    { id: 'week_20k',  svg: B.w20k,name: 'Beest Modus',     desc: '20.000 kg in een week',      category: 'Wekelijks', check: d => bestWeekVolume(d) >= 20000 },
+
+    { id: 'all_types', svg: B.ar,  name: 'All-Rounder',     desc: 'Alle split types gedaan',    category: 'Variatie', check: d => allTypesCompleted(d) },
+
+    { id: 'first_rpe', svg: B.rpe, name: 'Zelfkennis',      desc: 'Eerste RPE score gegeven',   category: 'Speciaal', check: d => hasAnyRPE(d) },
+    { id: 'perfect_w', svg: B.pw,  name: 'Perfect Workout',  desc: 'Alle oefeningen in 1 workout', category: 'Speciaal', check: d => hasPerfectWorkout(d) },
 ];
 
 // Badge helper functions
@@ -1480,10 +1514,11 @@ function renderBadges() {
 
         badges.forEach(badge => {
             const isUnlocked = unlocked.has(badge.id);
+            const lockedSVG = badgeSVG('circle', '#2E2D3D', '#1A1926', '🔒');
             const card = document.createElement('div');
             card.className = `badge-card${isUnlocked ? ' unlocked' : ' locked'}`;
             card.innerHTML = `
-                <span class="badge-icon">${isUnlocked ? badge.icon : '&#x1F512;'}</span>
+                <div class="badge-svg">${isUnlocked ? badge.svg : lockedSVG}</div>
                 <span class="badge-name">${badge.name}</span>
                 <span class="badge-desc">${badge.desc}</span>
             `;
@@ -1495,18 +1530,20 @@ function renderBadges() {
     });
 }
 
-// Badge showcase on profile (show last 5 earned)
+// Badge summary on profile (text link to badges tab)
 function renderBadgeShowcase() {
     const showcase = document.getElementById('profileBadgeShowcase');
     if (!showcase) return;
     const earned = getUnlockedBadges();
-    if (earned.length === 0) {
-        showcase.innerHTML = '<span class="showcase-empty">Nog geen badges behaald</span>';
-        return;
-    }
-    showcase.innerHTML = earned.slice(-5).map(b =>
-        `<span class="showcase-badge" title="${b.name}: ${b.desc}">${b.icon}</span>`
-    ).join('');
+    const total = BADGES.length;
+    showcase.innerHTML = `<a class="badge-link" id="badgeLinkBtn">${earned.length} / ${total} badges behaald — bekijk alle badges</a>`;
+    document.getElementById('badgeLinkBtn')?.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+        document.querySelector('.tab[data-tab="badges"]').classList.add('active');
+        document.getElementById('badges').classList.add('active');
+        renderBadges();
+    });
 }
 
 // Check for new badges after workout completion
