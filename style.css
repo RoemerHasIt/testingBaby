@@ -913,7 +913,67 @@ header {
 
 .profile-row:last-child { border-bottom: none; }
 .profile-label { color: var(--text-muted); font-size: 0.9rem; }
-.profile-value { font-weight: 600; font-size: 0.9rem; }
+.profile-value { font-weight: 600; font-size: 0.9rem; flex: 1; text-align: right; }
+
+.profile-row.editable {
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.profile-row.editable:hover {
+    background: var(--bg-card-hover);
+}
+
+.profile-row.editable:active {
+    background: rgba(108, 99, 255, 0.08);
+}
+
+.edit-icon {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    margin-left: 10px;
+    opacity: 0.4;
+    flex-shrink: 0;
+}
+
+.profile-row.editable:hover .edit-icon {
+    opacity: 1;
+    color: var(--primary);
+}
+
+.editable-name {
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.editable-name:hover {
+    color: var(--primary);
+}
+
+.input-with-unit {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.input-with-unit .form-input {
+    flex: 1;
+}
+
+.unit-label {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.edit-options {
+    flex-wrap: wrap;
+}
+
+.edit-days {
+    justify-content: center;
+    margin-bottom: 8px;
+}
 
 /* Toast */
 .toast {

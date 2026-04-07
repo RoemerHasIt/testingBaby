@@ -405,25 +405,6 @@ function goToStep(step) {
 }
 
 function finishOnboarding() {
-    if (isEditingProfile) {
-        // Update profile but keep workouts
-        appData.profile.name = onboardingData.name;
-        appData.profile.gender = onboardingData.gender;
-        appData.profile.height = onboardingData.height;
-        appData.profile.weight = onboardingData.weight;
-        appData.profile.age = onboardingData.age;
-        appData.profile.goal = onboardingData.goal;
-        appData.profile.trainingDays = onboardingData.trainingDays;
-        if (!appData.profile.weightHistory) appData.profile.weightHistory = [];
-        appData.profile.weightHistory.push({ date: getTodayString(), weight: onboardingData.weight });
-        isEditingProfile = false;
-        document.getElementById('step4Next').textContent = 'Start FitTrack';
-        saveData();
-        startApp();
-        showToast('Profiel bijgewerkt!');
-        return;
-    }
-
     appData = {
         profile: {
             name: onboardingData.name,
@@ -1061,44 +1042,129 @@ function renderProfile() {
     document.getElementById('profileDaysDisplay').textContent = dayNames.join(', ');
 }
 
-// Edit profile
-let isEditingProfile = false;
+// ============================================
+// Inline Profile Editing
+// ============================================
+let editingField = null;
 
-document.getElementById('editProfileBtn').addEventListener('click', () => {
-    isEditingProfile = true;
-    const p = appData.profile;
+const FIELD_CONFIG = {
+    name:   { title: 'Naam bewerken', type: 'text' },
+    gender: { title: 'Geslacht bewerken', type: 'choice', options: ['man', 'vrouw', 'anders'] },
+    age:    { title: 'Leeftijd bewerken', type: 'number', unit: 'jaar', min: 10, max: 100 },
+    height: { title: 'Lengte bewerken', type: 'number', unit: 'cm', min: 100, max: 250 },
+    weight: { title: 'Gewicht bewerken', type: 'number', unit: 'kg', min: 30, max: 300, step: 0.1 },
+    goal:   { title: 'Doel bewerken', type: 'choice', options: ['spiermassa', 'kracht', 'afvallen', 'fitness'], labels: GOAL_LABELS },
+    trainingDays: { title: 'Trainingsdagen bewerken', type: 'days' }
+};
 
-    // Pre-fill all fields
-    document.getElementById('profileName').value = p.name;
-    document.getElementById('profileHeight').value = p.height;
-    document.getElementById('profileWeight').value = p.weight;
-    document.getElementById('profileAge').value = p.age;
+// Name click
+document.getElementById('profileDisplayName').addEventListener('click', () => openFieldEditor('name'));
 
-    // Pre-select gender
-    document.querySelectorAll('#genderOptions .option-btn').forEach(btn => {
-        btn.classList.toggle('selected', btn.dataset.value === p.gender);
-    });
-    onboardingData.gender = p.gender;
+// Row clicks
+document.querySelectorAll('.profile-row.editable').forEach(row => {
+    row.addEventListener('click', () => openFieldEditor(row.dataset.field));
+});
 
-    // Pre-select goal
-    document.querySelectorAll('#goalOptions .goal-card').forEach(card => {
-        card.classList.toggle('selected', card.dataset.value === p.goal);
-    });
-    onboardingData.goal = p.goal;
-    document.getElementById('step3Next').disabled = false;
+function openFieldEditor(field) {
+    editingField = field;
+    const config = FIELD_CONFIG[field];
+    const modal = document.getElementById('editFieldModal');
+    const content = document.getElementById('editFieldContent');
+    document.getElementById('editFieldTitle').textContent = config.title;
 
-    // Pre-select days
-    document.querySelectorAll('#daySelector .day-btn').forEach(btn => {
-        btn.classList.toggle('selected', p.trainingDays.includes(parseInt(btn.dataset.day)));
-    });
-    updateDayCount();
+    const currentValue = field === 'trainingDays' ? appData.profile.trainingDays : appData.profile[field];
 
-    // Change button text
-    document.getElementById('step4Next').textContent = 'Opslaan';
+    if (config.type === 'text') {
+        content.innerHTML = `<div class="form-group"><input type="text" class="form-input" id="editFieldInput" value="${currentValue}"></div>`;
+    } else if (config.type === 'number') {
+        content.innerHTML = `<div class="form-group"><div class="input-with-unit"><input type="number" class="form-input" id="editFieldInput" value="${currentValue}" min="${config.min}" max="${config.max}" step="${config.step || 1}" inputmode="decimal"><span class="unit-label">${config.unit}</span></div></div>`;
+    } else if (config.type === 'choice') {
+        const labels = config.labels || {};
+        content.innerHTML = `<div class="option-group edit-options">${config.options.map(opt =>
+            `<button class="option-btn${currentValue === opt ? ' selected' : ''}" data-value="${opt}">${labels[opt] || opt.charAt(0).toUpperCase() + opt.slice(1)}</button>`
+        ).join('')}</div>`;
+        content.querySelectorAll('.option-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                content.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+            });
+        });
+    } else if (config.type === 'days') {
+        content.innerHTML = `<div class="day-selector edit-days">${
+            [1,2,3,4,5,6,0].map(d => `<button class="day-btn${currentValue.includes(d) ? ' selected' : ''}" data-day="${d}">${DAYS_SHORT[d]}</button>`).join('')
+        }</div><p class="day-count" id="editDayCount"></p>`;
+        content.querySelectorAll('.day-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                btn.classList.toggle('selected');
+                const count = content.querySelectorAll('.day-btn.selected').length;
+                document.getElementById('editDayCount').textContent = count < 2
+                    ? 'Minimaal 2 dagen'
+                    : `${count} dagen — ${getSplitLabel(count)}`;
+            });
+        });
+        const count = currentValue.length;
+        setTimeout(() => {
+            const el = document.getElementById('editDayCount');
+            if (el) el.textContent = `${count} dagen — ${getSplitLabel(count)}`;
+        }, 0);
+    }
 
-    document.getElementById('onboarding').style.display = '';
-    document.getElementById('mainApp').style.display = 'none';
-    goToStep(1);
+    modal.classList.add('active');
+}
+
+document.getElementById('cancelEditField').addEventListener('click', () => {
+    document.getElementById('editFieldModal').classList.remove('active');
+    editingField = null;
+});
+
+document.getElementById('editFieldModal').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) {
+        document.getElementById('editFieldModal').classList.remove('active');
+        editingField = null;
+    }
+});
+
+document.getElementById('saveEditField').addEventListener('click', () => {
+    const config = FIELD_CONFIG[editingField];
+    const content = document.getElementById('editFieldContent');
+    let newValue;
+
+    if (config.type === 'text') {
+        newValue = document.getElementById('editFieldInput').value.trim();
+        if (!newValue) { showToast('Vul een waarde in'); return; }
+    } else if (config.type === 'number') {
+        newValue = parseFloat(document.getElementById('editFieldInput').value);
+        if (!newValue || newValue < config.min || newValue > config.max) {
+            showToast(`Waarde moet tussen ${config.min} en ${config.max} ${config.unit} zijn`);
+            return;
+        }
+    } else if (config.type === 'choice') {
+        const sel = content.querySelector('.option-btn.selected');
+        if (!sel) { showToast('Maak een keuze'); return; }
+        newValue = sel.dataset.value;
+    } else if (config.type === 'days') {
+        newValue = Array.from(content.querySelectorAll('.day-btn.selected')).map(b => parseInt(b.dataset.day));
+        if (newValue.length < 2) { showToast('Selecteer minimaal 2 dagen'); return; }
+    }
+
+    // Save
+    if (editingField === 'trainingDays') {
+        appData.profile.trainingDays = newValue;
+    } else {
+        appData.profile[editingField] = newValue;
+    }
+
+    // Track weight changes
+    if (editingField === 'weight') {
+        if (!appData.profile.weightHistory) appData.profile.weightHistory = [];
+        appData.profile.weightHistory.push({ date: getTodayString(), weight: newValue });
+    }
+
+    saveData();
+    renderProfile();
+    document.getElementById('editFieldModal').classList.remove('active');
+    editingField = null;
+    showToast('Profiel bijgewerkt!');
 });
 
 document.getElementById('resetProfileBtn').addEventListener('click', () => {
@@ -1108,34 +1174,7 @@ document.getElementById('resetProfileBtn').addEventListener('click', () => {
     }
 });
 
-// Weight modal
-document.getElementById('profileWeightDisplay')?.closest?.('.profile-row')?.addEventListener('click', () => {
-    document.getElementById('newWeight').value = appData.profile.weight;
-    document.getElementById('weightModal').classList.add('active');
-});
-
-document.getElementById('cancelWeight').addEventListener('click', () => {
-    document.getElementById('weightModal').classList.remove('active');
-});
-
-document.getElementById('saveWeight').addEventListener('click', () => {
-    const w = parseFloat(document.getElementById('newWeight').value);
-    if (w && w > 0) {
-        appData.profile.weight = w;
-        if (!appData.profile.weightHistory) appData.profile.weightHistory = [];
-        appData.profile.weightHistory.push({ date: getTodayString(), weight: w });
-        saveData();
-        renderProfile();
-        document.getElementById('weightModal').classList.remove('active');
-        showToast('Gewicht bijgewerkt!');
-    }
-});
-
-document.getElementById('weightModal').addEventListener('click', (e) => {
-    if (e.target === e.currentTarget) {
-        document.getElementById('weightModal').classList.remove('active');
-    }
-});
+// (Weight modal replaced by inline field editor above)
 
 // ============================================
 // Day Navigation
