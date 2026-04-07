@@ -8,7 +8,109 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
-    <div class="app">
+
+    <!-- ONBOARDING -->
+    <div id="onboarding" class="onboarding">
+        <div class="onboarding-container">
+            <!-- Step 1: Welcome + Name -->
+            <div class="onboarding-step active" data-step="1">
+                <h1 class="onboarding-title">FitTrack</h1>
+                <p class="onboarding-subtitle">Laten we je profiel instellen</p>
+                <div class="form-group">
+                    <label>Hoe heet je?</label>
+                    <input type="text" id="profileName" placeholder="Jouw naam" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label>Geslacht</label>
+                    <div class="option-group" id="genderOptions">
+                        <button class="option-btn" data-value="man">Man</button>
+                        <button class="option-btn" data-value="vrouw">Vrouw</button>
+                        <button class="option-btn" data-value="anders">Anders</button>
+                    </div>
+                </div>
+                <button class="btn-primary" id="step1Next">Volgende</button>
+            </div>
+
+            <!-- Step 2: Body stats -->
+            <div class="onboarding-step" data-step="2">
+                <h2 class="onboarding-title">Lichaamsgegevens</h2>
+                <p class="onboarding-subtitle">Voor het berekenen van je BMI en voortgang</p>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Lengte (cm)</label>
+                        <input type="number" id="profileHeight" placeholder="175" class="form-input" inputmode="numeric">
+                    </div>
+                    <div class="form-group">
+                        <label>Gewicht (kg)</label>
+                        <input type="number" id="profileWeight" placeholder="75" class="form-input" inputmode="decimal" step="0.1">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Leeftijd</label>
+                    <input type="number" id="profileAge" placeholder="25" class="form-input" inputmode="numeric">
+                </div>
+                <div class="onboarding-nav">
+                    <button class="btn-cancel" id="step2Back">Terug</button>
+                    <button class="btn-primary" id="step2Next">Volgende</button>
+                </div>
+            </div>
+
+            <!-- Step 3: Goal -->
+            <div class="onboarding-step" data-step="3">
+                <h2 class="onboarding-title">Wat is je doel?</h2>
+                <p class="onboarding-subtitle">Je schema wordt hierop aangepast</p>
+                <div class="goal-grid" id="goalOptions">
+                    <button class="goal-card" data-value="spiermassa">
+                        <span class="goal-icon">&#9883;</span>
+                        <span class="goal-label">Spiermassa</span>
+                        <span class="goal-desc">Spieropbouw & hypertrofie</span>
+                    </button>
+                    <button class="goal-card" data-value="kracht">
+                        <span class="goal-icon">&#9889;</span>
+                        <span class="goal-label">Kracht</span>
+                        <span class="goal-desc">Maximale kracht opbouwen</span>
+                    </button>
+                    <button class="goal-card" data-value="afvallen">
+                        <span class="goal-icon">&#9832;</span>
+                        <span class="goal-label">Afvallen</span>
+                        <span class="goal-desc">Vetverbranding & conditie</span>
+                    </button>
+                    <button class="goal-card" data-value="fitness">
+                        <span class="goal-icon">&#9829;</span>
+                        <span class="goal-label">Fit Blijven</span>
+                        <span class="goal-desc">Algemene gezondheid</span>
+                    </button>
+                </div>
+                <div class="onboarding-nav">
+                    <button class="btn-cancel" id="step3Back">Terug</button>
+                    <button class="btn-primary" id="step3Next" disabled>Volgende</button>
+                </div>
+            </div>
+
+            <!-- Step 4: Training days -->
+            <div class="onboarding-step" data-step="4">
+                <h2 class="onboarding-title">Trainingsdagen</h2>
+                <p class="onboarding-subtitle">Op welke dagen wil je trainen?</p>
+                <div class="day-selector" id="daySelector">
+                    <button class="day-btn" data-day="1">Ma</button>
+                    <button class="day-btn" data-day="2">Di</button>
+                    <button class="day-btn" data-day="3">Wo</button>
+                    <button class="day-btn" data-day="4">Do</button>
+                    <button class="day-btn" data-day="5">Vr</button>
+                    <button class="day-btn" data-day="6">Za</button>
+                    <button class="day-btn" data-day="0">Zo</button>
+                </div>
+                <p class="day-count" id="dayCount">Selecteer minimaal 2 dagen</p>
+                <div class="onboarding-nav">
+                    <button class="btn-cancel" id="step4Back">Terug</button>
+                    <button class="btn-primary" id="step4Next" disabled>Start FitTrack</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN APP -->
+    <div class="app" id="mainApp" style="display:none;">
         <header>
             <h1>FitTrack</h1>
             <p class="subtitle" id="dateDisplay"></p>
@@ -18,20 +120,28 @@
             <button class="tab active" data-tab="workout">Workout</button>
             <button class="tab" data-tab="history">Geschiedenis</button>
             <button class="tab" data-tab="stats">Statistieken</button>
+            <button class="tab" data-tab="profile">Profiel</button>
         </nav>
 
         <!-- WORKOUT TAB -->
         <section id="workout" class="tab-content active">
-            <div class="day-info">
-                <span class="day-badge" id="dayBadge"></span>
-                <span class="muscle-group" id="muscleGroup"></span>
+            <div id="restDayMessage" style="display:none;">
+                <div class="rest-day-card">
+                    <span class="rest-icon">&#9790;</span>
+                    <h3>Rustdag</h3>
+                    <p>Vandaag staat er geen training gepland. Geniet van je rust en herstel!</p>
+                </div>
             </div>
-
-            <div id="exerciseList" class="exercise-list"></div>
-
-            <button class="btn-primary" id="finishWorkout" style="display:none;">
-                Workout Afronden
-            </button>
+            <div id="workoutContent">
+                <div class="day-info">
+                    <span class="day-badge" id="dayBadge"></span>
+                    <span class="muscle-group" id="muscleGroup"></span>
+                </div>
+                <div id="exerciseList" class="exercise-list"></div>
+                <button class="btn-primary" id="finishWorkout" style="display:none;">
+                    Workout Afronden
+                </button>
+            </div>
         </section>
 
         <!-- HISTORY TAB -->
@@ -76,6 +186,59 @@
                 <canvas id="muscleChart"></canvas>
             </div>
         </section>
+
+        <!-- PROFILE TAB -->
+        <section id="profile" class="tab-content">
+            <div class="profile-header">
+                <div class="profile-avatar" id="profileAvatar"></div>
+                <h2 id="profileDisplayName"></h2>
+            </div>
+
+            <div class="profile-stats">
+                <div class="profile-stat">
+                    <span class="profile-stat-value" id="profileBMI">-</span>
+                    <span class="profile-stat-label">BMI</span>
+                </div>
+                <div class="profile-stat">
+                    <span class="profile-stat-value" id="profileBMICategory">-</span>
+                    <span class="profile-stat-label">Categorie</span>
+                </div>
+            </div>
+
+            <div class="profile-details">
+                <div class="profile-row">
+                    <span class="profile-label">Doel</span>
+                    <span class="profile-value" id="profileGoalDisplay"></span>
+                </div>
+                <div class="profile-row">
+                    <span class="profile-label">Geslacht</span>
+                    <span class="profile-value" id="profileGenderDisplay"></span>
+                </div>
+                <div class="profile-row">
+                    <span class="profile-label">Leeftijd</span>
+                    <span class="profile-value" id="profileAgeDisplay"></span>
+                </div>
+                <div class="profile-row">
+                    <span class="profile-label">Lengte</span>
+                    <span class="profile-value" id="profileHeightDisplay"></span>
+                </div>
+                <div class="profile-row">
+                    <span class="profile-label">Gewicht</span>
+                    <span class="profile-value" id="profileWeightDisplay"></span>
+                </div>
+                <div class="profile-row">
+                    <span class="profile-label">Schema</span>
+                    <span class="profile-value" id="profileSchemaDisplay"></span>
+                </div>
+                <div class="profile-row">
+                    <span class="profile-label">Trainingsdagen</span>
+                    <span class="profile-value" id="profileDaysDisplay"></span>
+                </div>
+            </div>
+
+            <button class="btn-primary" id="editProfileBtn">Profiel Bewerken</button>
+            <button class="btn-danger" id="resetProfileBtn">Profiel Resetten</button>
+        </section>
     </div>
 
     <!-- MODAL voor sets loggen -->
@@ -87,6 +250,21 @@
             <div class="modal-actions">
                 <button class="btn-cancel" id="cancelModal">Annuleren</button>
                 <button class="btn-primary" id="saveModal">Opslaan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL voor gewicht updaten -->
+    <div class="modal-overlay" id="weightModal">
+        <div class="modal">
+            <h3>Gewicht Bijwerken</h3>
+            <div class="form-group">
+                <label>Nieuw gewicht (kg)</label>
+                <input type="number" id="newWeight" class="form-input" inputmode="decimal" step="0.1">
+            </div>
+            <div class="modal-actions">
+                <button class="btn-cancel" id="cancelWeight">Annuleren</button>
+                <button class="btn-primary" id="saveWeight">Opslaan</button>
             </div>
         </div>
     </div>

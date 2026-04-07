@@ -3,50 +3,133 @@
 // ============================================
 
 const STORAGE_KEY = 'fittrack_data';
+const DAYS_NL = ['Zondag', 'Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag'];
+const DAYS_SHORT = ['Zo', 'Ma', 'Di', 'Wo', 'Do', 'Vr', 'Za'];
+const MONTHS_NL = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
 
-// Workout schema: Push / Pull / Legs (6-dag rotatie)
-const WORKOUT_PLAN = {
-    push: {
-        label: 'Push',
-        muscle: 'Borst, Schouders & Triceps',
-        exercises: [
-            { name: 'Bench Press', target: '4 x 8-10', muscle: 'Borst' },
-            { name: 'Overhead Press', target: '3 x 8-10', muscle: 'Schouders' },
-            { name: 'Incline Dumbbell Press', target: '3 x 10-12', muscle: 'Borst' },
-            { name: 'Lateral Raises', target: '3 x 12-15', muscle: 'Schouders' },
-            { name: 'Tricep Pushdown', target: '3 x 10-12', muscle: 'Triceps' },
-            { name: 'Overhead Tricep Extension', target: '3 x 10-12', muscle: 'Triceps' },
-        ]
-    },
-    pull: {
-        label: 'Pull',
-        muscle: 'Rug & Biceps',
-        exercises: [
-            { name: 'Deadlift', target: '3 x 5-6', muscle: 'Rug' },
-            { name: 'Pull-ups', target: '4 x 6-10', muscle: 'Rug' },
-            { name: 'Barbell Row', target: '3 x 8-10', muscle: 'Rug' },
-            { name: 'Face Pulls', target: '3 x 12-15', muscle: 'Achter Schouders' },
-            { name: 'Barbell Curl', target: '3 x 10-12', muscle: 'Biceps' },
-            { name: 'Hammer Curl', target: '3 x 10-12', muscle: 'Biceps' },
-        ]
-    },
-    legs: {
-        label: 'Legs',
-        muscle: 'Benen & Core',
-        exercises: [
-            { name: 'Squat', target: '4 x 6-8', muscle: 'Quadriceps' },
-            { name: 'Romanian Deadlift', target: '3 x 8-10', muscle: 'Hamstrings' },
-            { name: 'Leg Press', target: '3 x 10-12', muscle: 'Quadriceps' },
-            { name: 'Walking Lunges', target: '3 x 10 per been', muscle: 'Benen' },
-            { name: 'Calf Raises', target: '4 x 12-15', muscle: 'Kuiten' },
-            { name: 'Plank', target: '3 x 45-60s', muscle: 'Core' },
-        ]
-    }
+const GOAL_LABELS = {
+    spiermassa: 'Spiermassa',
+    kracht: 'Kracht',
+    afvallen: 'Afvallen',
+    fitness: 'Fit Blijven'
 };
 
-const DAY_ROTATION = ['push', 'pull', 'legs', 'push', 'pull', 'legs'];
-const DAYS_NL = ['Zondag', 'Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag'];
-const MONTHS_NL = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
+// ============================================
+// Workout Plans by goal & split type
+// ============================================
+// Rep ranges per doel
+const REP_CONFIG = {
+    kracht:     { compound: '5 x 3-5',  accessory: '3 x 5-8',   isolation: '3 x 8-10'  },
+    spiermassa: { compound: '4 x 8-10', accessory: '3 x 10-12', isolation: '3 x 12-15' },
+    afvallen:   { compound: '4 x 12-15',accessory: '3 x 12-15', isolation: '3 x 15-20' },
+    fitness:    { compound: '3 x 8-12', accessory: '3 x 10-15', isolation: '3 x 12-15' },
+};
+
+// Exercise database
+function getExercises(goal) {
+    const r = REP_CONFIG[goal];
+    return {
+        push: {
+            label: 'Push',
+            muscle: 'Borst, Schouders & Triceps',
+            exercises: [
+                { name: 'Bench Press', target: r.compound, muscle: 'Borst' },
+                { name: 'Overhead Press', target: r.compound, muscle: 'Schouders' },
+                { name: 'Incline Dumbbell Press', target: r.accessory, muscle: 'Borst' },
+                { name: 'Lateral Raises', target: r.isolation, muscle: 'Schouders' },
+                { name: 'Tricep Pushdown', target: r.isolation, muscle: 'Triceps' },
+                { name: 'Overhead Tricep Extension', target: r.isolation, muscle: 'Triceps' },
+            ]
+        },
+        pull: {
+            label: 'Pull',
+            muscle: 'Rug & Biceps',
+            exercises: [
+                { name: 'Deadlift', target: r.compound, muscle: 'Rug' },
+                { name: 'Pull-ups', target: r.compound, muscle: 'Rug' },
+                { name: 'Barbell Row', target: r.accessory, muscle: 'Rug' },
+                { name: 'Face Pulls', target: r.isolation, muscle: 'Achter Schouders' },
+                { name: 'Barbell Curl', target: r.isolation, muscle: 'Biceps' },
+                { name: 'Hammer Curl', target: r.isolation, muscle: 'Biceps' },
+            ]
+        },
+        legs: {
+            label: 'Legs',
+            muscle: 'Benen & Core',
+            exercises: [
+                { name: 'Squat', target: r.compound, muscle: 'Quadriceps' },
+                { name: 'Romanian Deadlift', target: r.accessory, muscle: 'Hamstrings' },
+                { name: 'Leg Press', target: r.accessory, muscle: 'Quadriceps' },
+                { name: 'Walking Lunges', target: r.accessory, muscle: 'Benen' },
+                { name: 'Calf Raises', target: r.isolation, muscle: 'Kuiten' },
+                { name: 'Plank', target: '3 x 45-60s', muscle: 'Core' },
+            ]
+        },
+        upper: {
+            label: 'Upper Body',
+            muscle: 'Borst, Rug, Schouders & Armen',
+            exercises: [
+                { name: 'Bench Press', target: r.compound, muscle: 'Borst' },
+                { name: 'Barbell Row', target: r.compound, muscle: 'Rug' },
+                { name: 'Overhead Press', target: r.accessory, muscle: 'Schouders' },
+                { name: 'Pull-ups', target: r.accessory, muscle: 'Rug' },
+                { name: 'Lateral Raises', target: r.isolation, muscle: 'Schouders' },
+                { name: 'Barbell Curl', target: r.isolation, muscle: 'Biceps' },
+                { name: 'Tricep Pushdown', target: r.isolation, muscle: 'Triceps' },
+            ]
+        },
+        lower: {
+            label: 'Lower Body',
+            muscle: 'Benen, Billen & Core',
+            exercises: [
+                { name: 'Squat', target: r.compound, muscle: 'Quadriceps' },
+                { name: 'Romanian Deadlift', target: r.compound, muscle: 'Hamstrings' },
+                { name: 'Leg Press', target: r.accessory, muscle: 'Quadriceps' },
+                { name: 'Bulgarian Split Squat', target: r.accessory, muscle: 'Benen' },
+                { name: 'Leg Curl', target: r.isolation, muscle: 'Hamstrings' },
+                { name: 'Calf Raises', target: r.isolation, muscle: 'Kuiten' },
+                { name: 'Plank', target: '3 x 45-60s', muscle: 'Core' },
+            ]
+        },
+        full: {
+            label: 'Full Body',
+            muscle: 'Hele Lichaam',
+            exercises: [
+                { name: 'Squat', target: r.compound, muscle: 'Quadriceps' },
+                { name: 'Bench Press', target: r.compound, muscle: 'Borst' },
+                { name: 'Barbell Row', target: r.compound, muscle: 'Rug' },
+                { name: 'Overhead Press', target: r.accessory, muscle: 'Schouders' },
+                { name: 'Romanian Deadlift', target: r.accessory, muscle: 'Hamstrings' },
+                { name: 'Plank', target: '3 x 45-60s', muscle: 'Core' },
+            ]
+        }
+    };
+}
+
+// Determine split based on number of training days
+function getSplitRotation(numDays) {
+    switch (numDays) {
+        case 2: return ['upper', 'lower'];
+        case 3: return ['push', 'pull', 'legs'];
+        case 4: return ['upper', 'lower', 'push', 'pull'];
+        case 5: return ['push', 'pull', 'legs', 'upper', 'lower'];
+        case 6: return ['push', 'pull', 'legs', 'push', 'pull', 'legs'];
+        case 7: return ['push', 'pull', 'legs', 'upper', 'lower', 'full', 'full'];
+        default: return ['full', 'full'];
+    }
+}
+
+function getSplitLabel(numDays) {
+    switch (numDays) {
+        case 2: return 'Upper / Lower';
+        case 3: return 'Push / Pull / Legs';
+        case 4: return 'Upper / Lower / Push / Pull';
+        case 5: return 'PPL + Upper / Lower';
+        case 6: return 'Push / Pull / Legs x2';
+        case 7: return 'PPL + UL + Full Body';
+        default: return 'Full Body';
+    }
+}
 
 // ============================================
 // State
@@ -58,11 +141,15 @@ let currentExerciseSets = [];
 function loadData() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) return JSON.parse(raw);
-    return { workouts: [], startDate: new Date().toISOString().split('T')[0] };
+    return null;
 }
 
 function saveData() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+}
+
+function hasProfile() {
+    return appData && appData.profile && appData.profile.name;
 }
 
 // ============================================
@@ -77,32 +164,17 @@ function formatDate(dateStr) {
     return `${DAYS_NL[d.getDay()]} ${d.getDate()} ${MONTHS_NL[d.getMonth()]}`;
 }
 
-function getTodayWorkoutType() {
-    const start = new Date(appData.startDate + 'T12:00:00');
-    const today = new Date(getTodayString() + 'T12:00:00');
-    const diffDays = Math.floor((today - start) / (1000 * 60 * 60 * 24));
-    const index = ((diffDays % 6) + 6) % 6;
-    return DAY_ROTATION[index];
+function calcBMI(weightKg, heightCm) {
+    if (!weightKg || !heightCm) return null;
+    const heightM = heightCm / 100;
+    return weightKg / (heightM * heightM);
 }
 
-function getTodayWorkout() {
-    return appData.workouts.find(w => w.date === getTodayString());
-}
-
-function getOrCreateTodayWorkout() {
-    let workout = getTodayWorkout();
-    if (!workout) {
-        const type = getTodayWorkoutType();
-        workout = {
-            date: getTodayString(),
-            type: type,
-            exercises: {},
-            completed: false
-        };
-        appData.workouts.push(workout);
-        saveData();
-    }
-    return workout;
+function getBMICategory(bmi) {
+    if (bmi < 18.5) return 'Ondergewicht';
+    if (bmi < 25) return 'Gezond';
+    if (bmi < 30) return 'Overgewicht';
+    return 'Obesitas';
 }
 
 function calcVolume(sets) {
@@ -124,20 +196,193 @@ function showToast(message) {
     }, 2000);
 }
 
+function isTodayTrainingDay() {
+    const todayDow = new Date().getDay(); // 0=Sunday
+    return appData.profile.trainingDays.includes(todayDow);
+}
+
+// Get which workout type is scheduled for today based on the rotation
+function getTodayWorkoutType() {
+    const profile = appData.profile;
+    const trainingDays = profile.trainingDays.sort((a, b) => a - b);
+    const todayDow = new Date().getDay();
+
+    if (!trainingDays.includes(todayDow)) return null;
+
+    // Count how many training sessions have passed since start (by calendar weeks)
+    const start = new Date(appData.startDate + 'T12:00:00');
+    const today = new Date(getTodayString() + 'T12:00:00');
+
+    // Count total training days from startDate to today
+    let totalTrainingDays = 0;
+    const cursor = new Date(start);
+    while (cursor < today) {
+        if (trainingDays.includes(cursor.getDay())) {
+            totalTrainingDays++;
+        }
+        cursor.setDate(cursor.getDate() + 1);
+    }
+
+    const rotation = getSplitRotation(trainingDays.length);
+    const index = totalTrainingDays % rotation.length;
+    return rotation[index];
+}
+
+function getTodayWorkout() {
+    return appData.workouts.find(w => w.date === getTodayString());
+}
+
+function getOrCreateTodayWorkout() {
+    let workout = getTodayWorkout();
+    if (!workout) {
+        const type = getTodayWorkoutType();
+        if (!type) return null;
+        workout = {
+            date: getTodayString(),
+            type: type,
+            exercises: {},
+            completed: false
+        };
+        appData.workouts.push(workout);
+        saveData();
+    }
+    return workout;
+}
+
+function getWorkoutPlan() {
+    return getExercises(appData.profile.goal);
+}
+
+// ============================================
+// Onboarding
+// ============================================
+let onboardingData = { name: '', gender: '', height: 0, weight: 0, age: 0, goal: '', trainingDays: [] };
+
+function initOnboarding() {
+    document.getElementById('onboarding').style.display = '';
+    document.getElementById('mainApp').style.display = 'none';
+
+    // Step 1: Name + Gender
+    document.querySelectorAll('#genderOptions .option-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('#genderOptions .option-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            onboardingData.gender = btn.dataset.value;
+        });
+    });
+
+    document.getElementById('step1Next').addEventListener('click', () => {
+        const name = document.getElementById('profileName').value.trim();
+        if (!name) { showToast('Vul je naam in'); return; }
+        if (!onboardingData.gender) { showToast('Selecteer je geslacht'); return; }
+        onboardingData.name = name;
+        goToStep(2);
+    });
+
+    // Step 2: Body
+    document.getElementById('step2Back').addEventListener('click', () => goToStep(1));
+    document.getElementById('step2Next').addEventListener('click', () => {
+        const h = parseFloat(document.getElementById('profileHeight').value);
+        const w = parseFloat(document.getElementById('profileWeight').value);
+        const a = parseInt(document.getElementById('profileAge').value);
+        if (!h || h < 100 || h > 250) { showToast('Vul een geldige lengte in (100-250 cm)'); return; }
+        if (!w || w < 30 || w > 300) { showToast('Vul een geldig gewicht in (30-300 kg)'); return; }
+        if (!a || a < 10 || a > 100) { showToast('Vul een geldige leeftijd in'); return; }
+        onboardingData.height = h;
+        onboardingData.weight = w;
+        onboardingData.age = a;
+        goToStep(3);
+    });
+
+    // Step 3: Goal
+    document.getElementById('step3Back').addEventListener('click', () => goToStep(2));
+    document.querySelectorAll('#goalOptions .goal-card').forEach(card => {
+        card.addEventListener('click', () => {
+            document.querySelectorAll('#goalOptions .goal-card').forEach(c => c.classList.remove('selected'));
+            card.classList.add('selected');
+            onboardingData.goal = card.dataset.value;
+            document.getElementById('step3Next').disabled = false;
+        });
+    });
+    document.getElementById('step3Next').addEventListener('click', () => {
+        if (!onboardingData.goal) return;
+        goToStep(4);
+    });
+
+    // Step 4: Training days
+    document.getElementById('step4Back').addEventListener('click', () => goToStep(3));
+    document.querySelectorAll('#daySelector .day-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            btn.classList.toggle('selected');
+            updateDayCount();
+        });
+    });
+
+    document.getElementById('step4Next').addEventListener('click', () => {
+        const selected = Array.from(document.querySelectorAll('#daySelector .day-btn.selected'))
+            .map(b => parseInt(b.dataset.day));
+        if (selected.length < 2) return;
+        onboardingData.trainingDays = selected;
+        finishOnboarding();
+    });
+}
+
+function updateDayCount() {
+    const count = document.querySelectorAll('#daySelector .day-btn.selected').length;
+    const el = document.getElementById('dayCount');
+    const btn = document.getElementById('step4Next');
+
+    if (count < 2) {
+        el.textContent = 'Selecteer minimaal 2 dagen';
+        btn.disabled = true;
+    } else {
+        const split = getSplitLabel(count);
+        el.textContent = `${count} dagen per week — ${split}`;
+        btn.disabled = false;
+    }
+}
+
+function goToStep(step) {
+    document.querySelectorAll('.onboarding-step').forEach(s => s.classList.remove('active'));
+    document.querySelector(`.onboarding-step[data-step="${step}"]`).classList.add('active');
+}
+
+function finishOnboarding() {
+    appData = {
+        profile: {
+            name: onboardingData.name,
+            gender: onboardingData.gender,
+            height: onboardingData.height,
+            weight: onboardingData.weight,
+            age: onboardingData.age,
+            goal: onboardingData.goal,
+            trainingDays: onboardingData.trainingDays,
+            weightHistory: [{ date: getTodayString(), weight: onboardingData.weight }]
+        },
+        workouts: [],
+        startDate: getTodayString()
+    };
+    saveData();
+    startApp();
+}
+
 // ============================================
 // Tab Navigation
 // ============================================
-document.querySelectorAll('.tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
-        tab.classList.add('active');
-        document.getElementById(tab.dataset.tab).classList.add('active');
+function initTabs() {
+    document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+            tab.classList.add('active');
+            document.getElementById(tab.dataset.tab).classList.add('active');
 
-        if (tab.dataset.tab === 'stats') renderStats();
-        if (tab.dataset.tab === 'history') renderHistory();
+            if (tab.dataset.tab === 'stats') renderStats();
+            if (tab.dataset.tab === 'history') renderHistory();
+            if (tab.dataset.tab === 'profile') renderProfile();
+        });
     });
-});
+}
 
 // ============================================
 // Workout Tab
@@ -147,8 +392,21 @@ function renderWorkout() {
     document.getElementById('dateDisplay').textContent =
         `${DAYS_NL[today.getDay()]} ${today.getDate()} ${MONTHS_NL[today.getMonth()]} ${today.getFullYear()}`;
 
+    const restMsg = document.getElementById('restDayMessage');
+    const workoutContent = document.getElementById('workoutContent');
+
+    if (!isTodayTrainingDay()) {
+        restMsg.style.display = '';
+        workoutContent.style.display = 'none';
+        return;
+    }
+
+    restMsg.style.display = 'none';
+    workoutContent.style.display = '';
+
     const type = getTodayWorkoutType();
-    const plan = WORKOUT_PLAN[type];
+    const allPlans = getWorkoutPlan();
+    const plan = allPlans[type];
     const workout = getOrCreateTodayWorkout();
 
     document.getElementById('dayBadge').textContent = plan.label;
@@ -179,6 +437,8 @@ function renderWorkout() {
     });
 
     const finishBtn = document.getElementById('finishWorkout');
+    finishBtn.disabled = false;
+    finishBtn.style.opacity = '';
     if (completedCount > 0 && !workout.completed) {
         finishBtn.style.display = 'block';
         finishBtn.textContent = completedCount === plan.exercises.length
@@ -214,9 +474,8 @@ function openExerciseModal(exercise, index) {
     const existing = workout.exercises[index];
 
     if (existing && existing.sets && existing.sets.length > 0) {
-        currentExerciseSets = [...existing.sets];
+        currentExerciseSets = existing.sets.map(s => ({ ...s }));
     } else {
-        // Pre-fill with target sets
         const match = exercise.target.match(/(\d+)\s*x/);
         const numSets = match ? parseInt(match[1]) : 3;
         currentExerciseSets = Array.from({ length: numSets }, () => ({ weight: 0, reps: 0 }));
@@ -255,7 +514,6 @@ function renderSets() {
         container.appendChild(row);
     });
 
-    // Input listeners
     container.querySelectorAll('input').forEach(input => {
         input.addEventListener('input', (e) => {
             const idx = parseInt(e.target.dataset.set);
@@ -304,7 +562,6 @@ document.getElementById('saveModal').addEventListener('click', () => {
     currentExercise = null;
 });
 
-// Close modal on overlay click
 document.getElementById('modalOverlay').addEventListener('click', (e) => {
     if (e.target === e.currentTarget) {
         document.getElementById('modalOverlay').classList.remove('active');
@@ -329,8 +586,11 @@ function renderHistory() {
     }
     noHistory.style.display = 'none';
 
+    const allPlans = getWorkoutPlan();
+
     completed.forEach(workout => {
-        const plan = WORKOUT_PLAN[workout.type];
+        const plan = allPlans[workout.type];
+        if (!plan) return;
         let totalVol = 0;
         const exerciseEntries = Object.values(workout.exercises);
 
@@ -370,29 +630,29 @@ let volumeChart, frequencyChart, muscleChart;
 function renderStats() {
     const completed = appData.workouts.filter(w => w.completed);
 
-    // Summary cards
     document.getElementById('totalWorkouts').textContent = completed.length;
 
-    // Streak
+    // Streak: count consecutive training days with completed workouts
     let streak = 0;
-    const sortedDates = completed.map(w => w.date).sort().reverse();
-    if (sortedDates.length > 0) {
-        const today = getTodayString();
-        let checkDate = today;
-        for (let i = 0; i < 365; i++) {
-            if (sortedDates.includes(checkDate)) {
+    const completedDates = new Set(completed.map(w => w.date));
+    const trainingDays = appData.profile.trainingDays;
+    let checkDate = new Date(getTodayString() + 'T12:00:00');
+
+    for (let i = 0; i < 365; i++) {
+        const dateStr = checkDate.toISOString().split('T')[0];
+        const isTrainingDay = trainingDays.includes(checkDate.getDay());
+
+        if (isTrainingDay) {
+            if (completedDates.has(dateStr)) {
                 streak++;
             } else if (i > 0) {
                 break;
             }
-            const d = new Date(checkDate + 'T12:00:00');
-            d.setDate(d.getDate() - 1);
-            checkDate = d.toISOString().split('T')[0];
         }
+        checkDate.setDate(checkDate.getDate() - 1);
     }
     document.getElementById('currentStreak').textContent = streak;
 
-    // Total volume
     let totalVol = 0;
     completed.forEach(w => {
         Object.values(w.exercises).forEach(ex => {
@@ -401,13 +661,11 @@ function renderStats() {
     });
     document.getElementById('totalVolume').textContent = totalVol.toLocaleString('nl-NL');
 
-    // Avg exercises
     const avgEx = completed.length > 0
         ? (completed.reduce((sum, w) => sum + Object.keys(w.exercises).length, 0) / completed.length).toFixed(1)
         : 0;
     document.getElementById('avgExercises').textContent = avgEx;
 
-    // Charts
     renderVolumeChart(completed);
     renderFrequencyChart(completed);
     renderMuscleChart(completed);
@@ -451,15 +709,8 @@ function renderVolumeChart(completed) {
             responsive: true,
             plugins: { legend: { display: false } },
             scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: { color: 'rgba(255,255,255,0.05)' },
-                    ticks: { color: '#94A1B2' }
-                },
-                x: {
-                    grid: { display: false },
-                    ticks: { color: '#94A1B2' }
-                }
+                y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94A1B2' } },
+                x: { grid: { display: false }, ticks: { color: '#94A1B2' } }
             }
         }
     });
@@ -496,34 +747,32 @@ function renderFrequencyChart(completed) {
             responsive: true,
             plugins: { legend: { display: false } },
             scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: { color: 'rgba(255,255,255,0.05)' },
-                    ticks: { color: '#94A1B2', stepSize: 1 }
-                },
-                x: {
-                    grid: { display: false },
-                    ticks: { color: '#94A1B2' }
-                }
+                y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94A1B2', stepSize: 1 } },
+                x: { grid: { display: false }, ticks: { color: '#94A1B2' } }
             }
         }
     });
 }
 
 function renderMuscleChart(completed) {
-    const muscleCount = { push: 0, pull: 0, legs: 0 };
+    const typeCounts = {};
     completed.forEach(w => {
-        if (muscleCount[w.type] !== undefined) muscleCount[w.type]++;
+        typeCounts[w.type] = (typeCounts[w.type] || 0) + 1;
     });
+
+    const allPlans = getWorkoutPlan();
+    const labels = Object.keys(typeCounts).map(t => allPlans[t] ? allPlans[t].label : t);
+    const data = Object.values(typeCounts);
+    const colors = ['#6C63FF', '#2CB67D', '#FF8906', '#FF6584', '#E8D44D', '#94A1B2'];
 
     if (muscleChart) muscleChart.destroy();
     muscleChart = new Chart(document.getElementById('muscleChart'), {
         type: 'doughnut',
         data: {
-            labels: ['Push', 'Pull', 'Legs'],
+            labels,
             datasets: [{
-                data: [muscleCount.push, muscleCount.pull, muscleCount.legs],
-                backgroundColor: ['#6C63FF', '#2CB67D', '#FF8906'],
+                data,
+                backgroundColor: colors.slice(0, labels.length),
                 borderWidth: 0,
             }]
         },
@@ -541,6 +790,122 @@ function renderMuscleChart(completed) {
 }
 
 // ============================================
-// Init
+// Profile Tab
 // ============================================
-renderWorkout();
+function renderProfile() {
+    const p = appData.profile;
+
+    // Avatar
+    const avatar = document.getElementById('profileAvatar');
+    avatar.textContent = p.name.charAt(0).toUpperCase();
+
+    document.getElementById('profileDisplayName').textContent = p.name;
+
+    // BMI
+    const bmi = calcBMI(p.weight, p.height);
+    document.getElementById('profileBMI').textContent = bmi ? bmi.toFixed(1) : '-';
+    document.getElementById('profileBMICategory').textContent = bmi ? getBMICategory(bmi) : '-';
+
+    // Details
+    document.getElementById('profileGoalDisplay').textContent = GOAL_LABELS[p.goal] || p.goal;
+    document.getElementById('profileGenderDisplay').textContent = p.gender.charAt(0).toUpperCase() + p.gender.slice(1);
+    document.getElementById('profileAgeDisplay').textContent = `${p.age} jaar`;
+    document.getElementById('profileHeightDisplay').textContent = `${p.height} cm`;
+    document.getElementById('profileWeightDisplay').textContent = `${p.weight} kg`;
+    document.getElementById('profileSchemaDisplay').textContent = getSplitLabel(p.trainingDays.length);
+
+    const dayNames = p.trainingDays
+        .sort((a, b) => a - b)
+        .map(d => DAYS_SHORT[d]);
+    document.getElementById('profileDaysDisplay').textContent = dayNames.join(', ');
+}
+
+// Edit profile → re-run onboarding
+document.getElementById('editProfileBtn').addEventListener('click', () => {
+    // Pre-fill onboarding with current data
+    const p = appData.profile;
+    document.getElementById('profileName').value = p.name;
+    document.getElementById('profileHeight').value = p.height;
+    document.getElementById('profileWeight').value = p.weight;
+    document.getElementById('profileAge').value = p.age;
+
+    // Pre-select gender
+    document.querySelectorAll('#genderOptions .option-btn').forEach(btn => {
+        btn.classList.toggle('selected', btn.dataset.value === p.gender);
+    });
+    onboardingData.gender = p.gender;
+
+    // Pre-select goal
+    document.querySelectorAll('#goalOptions .goal-card').forEach(card => {
+        card.classList.toggle('selected', card.dataset.value === p.goal);
+    });
+    onboardingData.goal = p.goal;
+    document.getElementById('step3Next').disabled = false;
+
+    // Pre-select days
+    document.querySelectorAll('#daySelector .day-btn').forEach(btn => {
+        btn.classList.toggle('selected', p.trainingDays.includes(parseInt(btn.dataset.day)));
+    });
+    updateDayCount();
+
+    // Keep existing workouts when editing profile
+    const existingWorkouts = appData.workouts;
+    const originalFinish = finishOnboarding;
+
+    document.getElementById('onboarding').style.display = '';
+    document.getElementById('mainApp').style.display = 'none';
+    goToStep(1);
+});
+
+document.getElementById('resetProfileBtn').addEventListener('click', () => {
+    if (confirm('Weet je zeker dat je je profiel en alle data wilt resetten?')) {
+        localStorage.removeItem(STORAGE_KEY);
+        location.reload();
+    }
+});
+
+// Weight modal
+document.getElementById('profileWeightDisplay')?.closest?.('.profile-row')?.addEventListener('click', () => {
+    document.getElementById('newWeight').value = appData.profile.weight;
+    document.getElementById('weightModal').classList.add('active');
+});
+
+document.getElementById('cancelWeight').addEventListener('click', () => {
+    document.getElementById('weightModal').classList.remove('active');
+});
+
+document.getElementById('saveWeight').addEventListener('click', () => {
+    const w = parseFloat(document.getElementById('newWeight').value);
+    if (w && w > 0) {
+        appData.profile.weight = w;
+        if (!appData.profile.weightHistory) appData.profile.weightHistory = [];
+        appData.profile.weightHistory.push({ date: getTodayString(), weight: w });
+        saveData();
+        renderProfile();
+        document.getElementById('weightModal').classList.remove('active');
+        showToast('Gewicht bijgewerkt!');
+    }
+});
+
+document.getElementById('weightModal').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) {
+        document.getElementById('weightModal').classList.remove('active');
+    }
+});
+
+// ============================================
+// App Init
+// ============================================
+function startApp() {
+    document.getElementById('onboarding').style.display = 'none';
+    document.getElementById('mainApp').style.display = '';
+    initTabs();
+    renderWorkout();
+}
+
+// Boot
+if (hasProfile()) {
+    startApp();
+} else {
+    initOnboarding();
+}
