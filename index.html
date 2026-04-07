@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FitTrack - Jouw Fitness Tracker</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="app">
+        <header>
+            <h1>FitTrack</h1>
+            <p class="subtitle" id="dateDisplay"></p>
+        </header>
+
+        <nav class="tabs">
+            <button class="tab active" data-tab="workout">Workout</button>
+            <button class="tab" data-tab="history">Geschiedenis</button>
+            <button class="tab" data-tab="stats">Statistieken</button>
+        </nav>
+
+        <!-- WORKOUT TAB -->
+        <section id="workout" class="tab-content active">
+            <div class="day-info">
+                <span class="day-badge" id="dayBadge"></span>
+                <span class="muscle-group" id="muscleGroup"></span>
+            </div>
+
+            <div id="exerciseList" class="exercise-list"></div>
+
+            <button class="btn-primary" id="finishWorkout" style="display:none;">
+                Workout Afronden
+            </button>
+        </section>
+
+        <!-- HISTORY TAB -->
+        <section id="history" class="tab-content">
+            <div id="historyList" class="history-list"></div>
+            <p id="noHistory" class="empty-state">Nog geen workouts opgeslagen.</p>
+        </section>
+
+        <!-- STATS TAB -->
+        <section id="stats" class="tab-content">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <span class="stat-value" id="totalWorkouts">0</span>
+                    <span class="stat-label">Workouts</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-value" id="currentStreak">0</span>
+                    <span class="stat-label">Streak (dagen)</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-value" id="totalVolume">0</span>
+                    <span class="stat-label">Totaal Volume (kg)</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-value" id="avgExercises">0</span>
+                    <span class="stat-label">Gem. Oefeningen/Workout</span>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <h3>Volume per Week</h3>
+                <canvas id="volumeChart"></canvas>
+            </div>
+
+            <div class="chart-container">
+                <h3>Workouts per Week</h3>
+                <canvas id="frequencyChart"></canvas>
+            </div>
+
+            <div class="chart-container">
+                <h3>Spiergroep Verdeling</h3>
+                <canvas id="muscleChart"></canvas>
+            </div>
+        </section>
+    </div>
+
+    <!-- MODAL voor sets loggen -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+            <h3 id="modalTitle"></h3>
+            <div id="setsContainer" class="sets-container"></div>
+            <button class="btn-secondary" id="addSetBtn">+ Set Toevoegen</button>
+            <div class="modal-actions">
+                <button class="btn-cancel" id="cancelModal">Annuleren</button>
+                <button class="btn-primary" id="saveModal">Opslaan</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
