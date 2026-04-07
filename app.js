@@ -606,7 +606,7 @@ function renderWorkout() {
     }
 }
 
-document.getElementById('finishWorkout').addEventListener('click', () => {
+document.getElementById('finishWorkout')?.addEventListener('click', () => {
     const workout = getTodayWorkout();
     if (workout && !workout.completed) {
         workout.completed = true;
@@ -730,7 +730,7 @@ function renderSets() {
 }
 
 // Guide toggle
-document.getElementById('guideToggle').addEventListener('click', () => {
+document.getElementById('guideToggle')?.addEventListener('click', () => {
     const content = document.getElementById('guideContent');
     const toggle = document.getElementById('guideToggle');
     if (content.style.display === 'none') {
@@ -754,18 +754,18 @@ document.querySelectorAll('.rpe-btn').forEach(btn => {
     });
 });
 
-document.getElementById('addSetBtn').addEventListener('click', () => {
+document.getElementById('addSetBtn')?.addEventListener('click', () => {
     const lastSet = currentExerciseSets[currentExerciseSets.length - 1];
     currentExerciseSets.push({ weight: lastSet.weight, reps: lastSet.reps });
     renderSets();
 });
 
-document.getElementById('cancelModal').addEventListener('click', () => {
+document.getElementById('cancelModal')?.addEventListener('click', () => {
     document.getElementById('modalOverlay').classList.remove('active');
     currentExercise = null;
 });
 
-document.getElementById('saveModal').addEventListener('click', () => {
+document.getElementById('saveModal')?.addEventListener('click', () => {
     const workout = getOrCreateTodayWorkout();
     const validSets = currentExerciseSets.filter(s => s.reps > 0);
 
@@ -786,7 +786,7 @@ document.getElementById('saveModal').addEventListener('click', () => {
     currentExercise = null;
 });
 
-document.getElementById('modalOverlay').addEventListener('click', (e) => {
+document.getElementById('modalOverlay')?.addEventListener('click', (e) => {
     if (e.target === e.currentTarget) {
         document.getElementById('modalOverlay').classList.remove('active');
     }
@@ -1060,7 +1060,7 @@ const FIELD_CONFIG = {
 };
 
 // Name click
-document.getElementById('profileDisplayName').addEventListener('click', () => openFieldEditor('name'));
+document.getElementById('profileDisplayName')?.addEventListener('click', () => openFieldEditor('name'));
 
 // Row clicks
 document.querySelectorAll('.profile-row.editable').forEach(row => {
@@ -1114,19 +1114,19 @@ function openFieldEditor(field) {
     modal.classList.add('active');
 }
 
-document.getElementById('cancelEditField').addEventListener('click', () => {
+document.getElementById('cancelEditField')?.addEventListener('click', () => {
     document.getElementById('editFieldModal').classList.remove('active');
     editingField = null;
 });
 
-document.getElementById('editFieldModal').addEventListener('click', (e) => {
+document.getElementById('editFieldModal')?.addEventListener('click', (e) => {
     if (e.target === e.currentTarget) {
         document.getElementById('editFieldModal').classList.remove('active');
         editingField = null;
     }
 });
 
-document.getElementById('saveEditField').addEventListener('click', () => {
+document.getElementById('saveEditField')?.addEventListener('click', () => {
     const config = FIELD_CONFIG[editingField];
     const content = document.getElementById('editFieldContent');
     let newValue;
@@ -1169,7 +1169,7 @@ document.getElementById('saveEditField').addEventListener('click', () => {
     showToast('Profiel bijgewerkt!');
 });
 
-document.getElementById('resetProfileBtn').addEventListener('click', () => {
+document.getElementById('resetProfileBtn')?.addEventListener('click', () => {
     if (confirm('Weet je zeker dat je je profiel en alle data wilt resetten?')) {
         localStorage.removeItem(STORAGE_KEY);
         location.reload();
@@ -1391,19 +1391,22 @@ function checkNewBadges() {
 // ============================================
 // Day Navigation
 // ============================================
-document.getElementById('prevDay').addEventListener('click', () => {
-    selectedDate = new Date(selectedDate.getTime() - 86400000);
-    renderWorkout();
-});
-
-document.getElementById('nextDay').addEventListener('click', () => {
-    const tomorrow = new Date(selectedDate.getTime() + 86400000);
-    const todayEnd = new Date(getTodayString() + 'T23:59:59');
-    if (tomorrow <= todayEnd) {
-        selectedDate = tomorrow;
+function initDayNav() {
+    const prev = document.getElementById('prevDay');
+    const next = document.getElementById('nextDay');
+    if (prev) prev.addEventListener('click', () => {
+        selectedDate = new Date(selectedDate.getTime() - 86400000);
         renderWorkout();
-    }
-});
+    });
+    if (next) next.addEventListener('click', () => {
+        const tomorrow = new Date(selectedDate.getTime() + 86400000);
+        const todayEnd = new Date(getTodayString() + 'T23:59:59');
+        if (tomorrow <= todayEnd) {
+            selectedDate = tomorrow;
+            renderWorkout();
+        }
+    });
+}
 
 // ============================================
 // App Init
@@ -1412,6 +1415,7 @@ function startApp() {
     document.getElementById('onboarding').style.display = 'none';
     document.getElementById('mainApp').style.display = '';
     initTabs();
+    initDayNav();
     renderWorkout();
 }
 
