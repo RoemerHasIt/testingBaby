@@ -12,7 +12,6 @@
     <!-- ONBOARDING -->
     <div id="onboarding" class="onboarding">
         <div class="onboarding-container">
-            <!-- Step 1: Welcome + Name -->
             <div class="onboarding-step active" data-step="1">
                 <h1 class="onboarding-title">FitTrack</h1>
                 <p class="onboarding-subtitle">Laten we je profiel instellen</p>
@@ -31,7 +30,6 @@
                 <button class="btn-primary" id="step1Next">Volgende</button>
             </div>
 
-            <!-- Step 2: Body stats -->
             <div class="onboarding-step" data-step="2">
                 <h2 class="onboarding-title">Lichaamsgegevens</h2>
                 <p class="onboarding-subtitle">Voor het berekenen van je BMI en voortgang</p>
@@ -55,7 +53,6 @@
                 </div>
             </div>
 
-            <!-- Step 3: Goal -->
             <div class="onboarding-step" data-step="3">
                 <h2 class="onboarding-title">Wat is je doel?</h2>
                 <p class="onboarding-subtitle">Je schema wordt hierop aangepast</p>
@@ -87,7 +84,6 @@
                 </div>
             </div>
 
-            <!-- Step 4: Training days -->
             <div class="onboarding-step" data-step="4">
                 <h2 class="onboarding-title">Trainingsdagen</h2>
                 <p class="onboarding-subtitle">Op welke dagen wil je trainen?</p>
@@ -112,7 +108,7 @@
     <!-- MAIN APP -->
     <div class="app" id="mainApp" style="display:none;">
         <header>
-            <h1>FitTrack</h1>
+            <h2 class="greeting" id="greeting"></h2>
             <p class="subtitle" id="dateDisplay"></p>
         </header>
 
@@ -130,6 +126,7 @@
                     <span class="rest-icon">&#9790;</span>
                     <h3>Rustdag</h3>
                     <p>Vandaag staat er geen training gepland. Geniet van je rust en herstel!</p>
+                    <p class="next-workout" id="nextWorkoutInfo"></p>
                 </div>
             </div>
             <div id="workoutContent">
@@ -170,17 +167,14 @@
                     <span class="stat-label">Gem. Oefeningen/Workout</span>
                 </div>
             </div>
-
             <div class="chart-container">
                 <h3>Volume per Week</h3>
                 <canvas id="volumeChart"></canvas>
             </div>
-
             <div class="chart-container">
                 <h3>Workouts per Week</h3>
                 <canvas id="frequencyChart"></canvas>
             </div>
-
             <div class="chart-container">
                 <h3>Spiergroep Verdeling</h3>
                 <canvas id="muscleChart"></canvas>
@@ -193,7 +187,6 @@
                 <div class="profile-avatar" id="profileAvatar"></div>
                 <h2 id="profileDisplayName"></h2>
             </div>
-
             <div class="profile-stats">
                 <div class="profile-stat">
                     <span class="profile-stat-value" id="profileBMI">-</span>
@@ -204,49 +197,75 @@
                     <span class="profile-stat-label">Categorie</span>
                 </div>
             </div>
-
             <div class="profile-details">
-                <div class="profile-row">
-                    <span class="profile-label">Doel</span>
-                    <span class="profile-value" id="profileGoalDisplay"></span>
-                </div>
-                <div class="profile-row">
-                    <span class="profile-label">Geslacht</span>
-                    <span class="profile-value" id="profileGenderDisplay"></span>
-                </div>
-                <div class="profile-row">
-                    <span class="profile-label">Leeftijd</span>
-                    <span class="profile-value" id="profileAgeDisplay"></span>
-                </div>
-                <div class="profile-row">
-                    <span class="profile-label">Lengte</span>
-                    <span class="profile-value" id="profileHeightDisplay"></span>
-                </div>
-                <div class="profile-row">
-                    <span class="profile-label">Gewicht</span>
-                    <span class="profile-value" id="profileWeightDisplay"></span>
-                </div>
-                <div class="profile-row">
-                    <span class="profile-label">Schema</span>
-                    <span class="profile-value" id="profileSchemaDisplay"></span>
-                </div>
-                <div class="profile-row">
-                    <span class="profile-label">Trainingsdagen</span>
-                    <span class="profile-value" id="profileDaysDisplay"></span>
-                </div>
+                <div class="profile-row"><span class="profile-label">Doel</span><span class="profile-value" id="profileGoalDisplay"></span></div>
+                <div class="profile-row"><span class="profile-label">Geslacht</span><span class="profile-value" id="profileGenderDisplay"></span></div>
+                <div class="profile-row"><span class="profile-label">Leeftijd</span><span class="profile-value" id="profileAgeDisplay"></span></div>
+                <div class="profile-row"><span class="profile-label">Lengte</span><span class="profile-value" id="profileHeightDisplay"></span></div>
+                <div class="profile-row"><span class="profile-label">Gewicht</span><span class="profile-value" id="profileWeightDisplay"></span></div>
+                <div class="profile-row"><span class="profile-label">Schema</span><span class="profile-value" id="profileSchemaDisplay"></span></div>
+                <div class="profile-row"><span class="profile-label">Trainingsdagen</span><span class="profile-value" id="profileDaysDisplay"></span></div>
             </div>
-
             <button class="btn-primary" id="editProfileBtn">Profiel Bewerken</button>
             <button class="btn-danger" id="resetProfileBtn">Profiel Resetten</button>
         </section>
     </div>
 
-    <!-- MODAL voor sets loggen -->
+    <!-- MODAL: sets loggen + RPE -->
     <div class="modal-overlay" id="modalOverlay">
         <div class="modal">
             <h3 id="modalTitle"></h3>
+
+            <!-- Exercise Guide -->
+            <div class="exercise-guide" id="exerciseGuide">
+                <button class="guide-toggle" id="guideToggle">Hoe voer ik deze oefening uit?</button>
+                <div class="guide-content" id="guideContent" style="display:none;">
+                    <div class="guide-section">
+                        <h4>Uitvoering</h4>
+                        <p id="guideExecution"></p>
+                    </div>
+                    <div class="guide-section">
+                        <h4>Tips</h4>
+                        <ul id="guideTips"></ul>
+                    </div>
+                    <div class="guide-section">
+                        <h4>Veelgemaakte fouten</h4>
+                        <ul id="guideMistakes"></ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Suggestion banner -->
+            <div class="weight-suggestion" id="weightSuggestion" style="display:none;">
+                <span id="suggestionText"></span>
+            </div>
+
             <div id="setsContainer" class="sets-container"></div>
             <button class="btn-secondary" id="addSetBtn">+ Set Toevoegen</button>
+
+            <!-- RPE Selector -->
+            <div class="rpe-section" id="rpeSection">
+                <label class="rpe-label">Hoe zwaar was het?</label>
+                <div class="rpe-scale" id="rpeScale">
+                    <button class="rpe-btn" data-rpe="1" title="Heel licht">1</button>
+                    <button class="rpe-btn" data-rpe="2" title="Licht">2</button>
+                    <button class="rpe-btn" data-rpe="3" title="Licht">3</button>
+                    <button class="rpe-btn" data-rpe="4" title="Matig licht">4</button>
+                    <button class="rpe-btn" data-rpe="5" title="Matig">5</button>
+                    <button class="rpe-btn" data-rpe="6" title="Matig zwaar">6</button>
+                    <button class="rpe-btn" data-rpe="7" title="Zwaar">7</button>
+                    <button class="rpe-btn" data-rpe="8" title="Erg zwaar">8</button>
+                    <button class="rpe-btn" data-rpe="9" title="Bijna max">9</button>
+                    <button class="rpe-btn" data-rpe="10" title="Maximaal">10</button>
+                </div>
+                <div class="rpe-labels">
+                    <span>Makkelijk</span>
+                    <span>Perfect</span>
+                    <span>Te zwaar</span>
+                </div>
+                <p class="rpe-feedback" id="rpeFeedback"></p>
+            </div>
+
             <div class="modal-actions">
                 <button class="btn-cancel" id="cancelModal">Annuleren</button>
                 <button class="btn-primary" id="saveModal">Opslaan</button>
@@ -254,7 +273,7 @@
         </div>
     </div>
 
-    <!-- MODAL voor gewicht updaten -->
+    <!-- MODAL: gewicht updaten -->
     <div class="modal-overlay" id="weightModal">
         <div class="modal">
             <h3>Gewicht Bijwerken</h3>
@@ -269,6 +288,7 @@
         </div>
     </div>
 
+    <script src="exercises.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

@@ -177,8 +177,51 @@ function getBMICategory(bmi) {
     return 'Obesitas';
 }
 
+function getGreeting() {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Goedemorgen';
+    if (hour < 18) return 'Goedemiddag';
+    return 'Goedenavond';
+}
+
 function calcVolume(sets) {
     return sets.reduce((sum, s) => sum + (s.weight * s.reps), 0);
+}
+
+function getRPEFeedback(rpe) {
+    if (rpe <= 4) return { text: 'Te licht! Verhoog gewicht met 5-10% volgende keer.', class: 'rpe-low' };
+    if (rpe <= 6) return { text: 'Aan de lichte kant. Overweeg 2.5-5% meer gewicht.', class: 'rpe-low' };
+    if (rpe <= 8) return { text: 'Perfect! Dit is precies goed. Houd dit gewicht aan.', class: 'rpe-good' };
+    if (rpe === 9) return { text: 'Zwaar maar goed! Probeer dit gewicht te houden.', class: 'rpe-high' };
+    return { text: 'Te zwaar! Verlaag gewicht met 5-10% volgende keer.', class: 'rpe-high' };
+}
+
+function getWeightSuggestion(exerciseName) {
+    if (!appData || !appData.workouts) return null;
+    // Find the last time this exercise was done
+    const past = appData.workouts
+        .filter(w => w.completed)
+        .sort((a, b) => b.date.localeCompare(a.date));
+    for (const w of past) {
+        for (const ex of Object.values(w.exercises)) {
+            if (ex.name === exerciseName && ex.sets && ex.sets.length > 0) {
+                const lastRPE = ex.rpe || 0;
+                const lastWeight = Math.max(...ex.sets.map(s => s.weight));
+                if (lastRPE && lastWeight) {
+                    let suggestion = lastWeight;
+                    if (lastRPE <= 5) suggestion = Math.round((lastWeight * 1.075) / 2.5) * 2.5;
+                    else if (lastRPE <= 6) suggestion = Math.round((lastWeight * 1.025) / 2.5) * 2.5;
+                    else if (lastRPE >= 10) suggestion = Math.round((lastWeight * 0.925) / 2.5) * 2.5;
+                    else if (lastRPE >= 9) suggestion = Math.round((lastWeight * 0.975) / 2.5) * 2.5;
+                    if (suggestion !== lastWeight) {
+                        return { lastWeight, lastRPE, suggestion };
+                    }
+                }
+                return { lastWeight, lastRPE: lastRPE || null, suggestion: null };
+            }
+        }
+    }
+    return null;
 }
 
 function showToast(message) {
@@ -362,8 +405,79 @@ function finishOnboarding() {
         workouts: [],
         startDate: getTodayString()
     };
+
+    // Generate first week of pre-filled workouts
+    generateFirstWeek();
+
     saveData();
     startApp();
+}
+
+function generateFirstWeek() {
+    const starterWeights = typeof getStarterWeights !== 'undefined'
+        ? getStarterWeights(appData.profile.gender, appData.profile.weight)
+        : {};
+    const allPlans = getExercises(appData.profile.goal);
+    const trainingDays = appData.profile.trainingDays.sort((a, b) => a - b);
+    const rotation = getSplitRotation(trainingDays.length);
+
+    // Find dates for the past 7 days that match training days
+    const today = new Date();
+    const pastDates = [];
+    for (let i = 7; i >= 1; i--) {
+        const d = new Date(today.getTime() - i * 86400000);
+        if (trainingDays.includes(d.getDay())) {
+            pastDates.push(d);
+        }
+    }
+
+    pastDates.forEach((date, idx) => {
+        const dateStr = date.toISOString().split('T')[0];
+        const type = rotation[idx % rotation.length];
+        const plan = allPlans[type];
+        if (!plan) return;
+
+        const exercises = {};
+        plan.exercises.forEach((ex, i) => {
+            const baseWeight = starterWeights[ex.name] || 20;
+            const match = ex.target.match(/(\d+)\s*x\s*(\d+)/);
+            const numSets = match ? parseInt(match[1]) : 3;
+            const targetReps = match ? parseInt(match[2]) : 10;
+
+            if (ex.name === 'Plank') {
+                exercises[i] = {
+                    name: ex.name,
+                    sets: Array.from({ length: numSets }, () => ({ weight: 0, reps: 45 })),
+                    rpe: 7
+                };
+            } else if (ex.name === 'Pull-ups') {
+                exercises[i] = {
+                    name: ex.name,
+                    sets: Array.from({ length: numSets }, () => ({ weight: 0, reps: Math.max(3, targetReps - 2) })),
+                    rpe: 8
+                };
+            } else {
+                exercises[i] = {
+                    name: ex.name,
+                    sets: Array.from({ length: numSets }, (_, si) => ({
+                        weight: baseWeight,
+                        reps: Math.max(targetReps - si, targetReps - 2)
+                    })),
+                    rpe: 7
+                };
+            }
+        });
+
+        appData.workouts.push({
+            date: dateStr,
+            type: type,
+            exercises: exercises,
+            completed: true
+        });
+    });
+
+    // Update startDate to a week ago
+    appData.startDate = new Date(today.getTime() - 7 * 86400000).toISOString().split('T')[0];
 }
 
 // ============================================
@@ -389,6 +503,8 @@ function initTabs() {
 // ============================================
 function renderWorkout() {
     const today = new Date();
+    const name = appData.profile.name.split(' ')[0];
+    document.getElementById('greeting').textContent = `${getGreeting()}, ${name}`;
     document.getElementById('dateDisplay').textContent =
         `${DAYS_NL[today.getDay()]} ${today.getDate()} ${MONTHS_NL[today.getMonth()]} ${today.getFullYear()}`;
 
@@ -398,6 +514,15 @@ function renderWorkout() {
     if (!isTodayTrainingDay()) {
         restMsg.style.display = '';
         workoutContent.style.display = 'none';
+        // Show next training day
+        const trainingDays = appData.profile.trainingDays;
+        let nextDay = new Date();
+        for (let i = 1; i <= 7; i++) {
+            nextDay = new Date(today.getTime() + i * 86400000);
+            if (trainingDays.includes(nextDay.getDay())) break;
+        }
+        const info = document.getElementById('nextWorkoutInfo');
+        if (info) info.textContent = `Volgende training: ${DAYS_NL[nextDay.getDay()]}`;
         return;
     }
 
@@ -428,7 +553,7 @@ function renderWorkout() {
             <div class="exercise-info">
                 <h4>${exercise.name}</h4>
                 <span class="target">${exercise.target} — ${exercise.muscle}</span>
-                ${isCompleted ? `<div class="exercise-sets-summary">${logged.sets.length} sets — ${calcVolume(logged.sets)} kg volume</div>` : ''}
+                ${isCompleted ? `<div class="exercise-sets-summary">${logged.sets.length} sets — ${calcVolume(logged.sets)} kg volume${logged.rpe ? ' — RPE ' + logged.rpe : ''}</div>` : ''}
             </div>
             <div class="exercise-status">${isCompleted ? '&#10003;' : ''}</div>
         `;
@@ -467,14 +592,18 @@ document.getElementById('finishWorkout').addEventListener('click', () => {
 // ============================================
 // Exercise Modal
 // ============================================
+let currentRPE = 0;
+
 function openExerciseModal(exercise, index) {
     currentExercise = { ...exercise, index };
+    currentRPE = 0;
 
     const workout = getOrCreateTodayWorkout();
     const existing = workout.exercises[index];
 
     if (existing && existing.sets && existing.sets.length > 0) {
         currentExerciseSets = existing.sets.map(s => ({ ...s }));
+        currentRPE = existing.rpe || 0;
     } else {
         const match = exercise.target.match(/(\d+)\s*x/);
         const numSets = match ? parseInt(match[1]) : 3;
@@ -482,6 +611,47 @@ function openExerciseModal(exercise, index) {
     }
 
     document.getElementById('modalTitle').textContent = exercise.name;
+
+    // Exercise guide
+    const guide = typeof EXERCISE_GUIDE !== 'undefined' ? EXERCISE_GUIDE[exercise.name] : null;
+    const guideEl = document.getElementById('exerciseGuide');
+    const guideContent = document.getElementById('guideContent');
+    if (guide && guideEl) {
+        guideEl.style.display = '';
+        guideContent.style.display = 'none';
+        document.getElementById('guideExecution').textContent = guide.execution;
+        const tipsList = document.getElementById('guideTips');
+        tipsList.innerHTML = guide.tips.map(t => `<li>${t}</li>`).join('');
+        const mistakesList = document.getElementById('guideMistakes');
+        mistakesList.innerHTML = guide.mistakes.map(m => `<li>${m}</li>`).join('');
+    } else if (guideEl) {
+        guideEl.style.display = 'none';
+    }
+
+    // Weight suggestion from previous RPE
+    const suggestionEl = document.getElementById('weightSuggestion');
+    const ws = getWeightSuggestion(exercise.name);
+    if (ws && ws.suggestion && suggestionEl) {
+        const dir = ws.suggestion > ws.lastWeight ? 'verhogen' : 'verlagen';
+        document.getElementById('suggestionText').textContent =
+            `Suggestie: ${dir} naar ${ws.suggestion} kg (vorige: ${ws.lastWeight} kg, RPE ${ws.lastRPE})`;
+        suggestionEl.style.display = '';
+    } else if (suggestionEl) {
+        suggestionEl.style.display = 'none';
+    }
+
+    // RPE reset
+    document.querySelectorAll('.rpe-btn').forEach(b => b.classList.remove('selected'));
+    if (currentRPE) {
+        const btn = document.querySelector(`.rpe-btn[data-rpe="${currentRPE}"]`);
+        if (btn) btn.classList.add('selected');
+        const fb = getRPEFeedback(currentRPE);
+        document.getElementById('rpeFeedback').textContent = fb.text;
+        document.getElementById('rpeFeedback').className = 'rpe-feedback ' + fb.class;
+    } else {
+        document.getElementById('rpeFeedback').textContent = '';
+    }
+
     renderSets();
     document.getElementById('modalOverlay').classList.add('active');
 }
@@ -531,6 +701,31 @@ function renderSets() {
     });
 }
 
+// Guide toggle
+document.getElementById('guideToggle').addEventListener('click', () => {
+    const content = document.getElementById('guideContent');
+    const toggle = document.getElementById('guideToggle');
+    if (content.style.display === 'none') {
+        content.style.display = '';
+        toggle.textContent = 'Uitleg verbergen';
+    } else {
+        content.style.display = 'none';
+        toggle.textContent = 'Hoe voer ik deze oefening uit?';
+    }
+});
+
+// RPE buttons
+document.querySelectorAll('.rpe-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.rpe-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        currentRPE = parseInt(btn.dataset.rpe);
+        const fb = getRPEFeedback(currentRPE);
+        document.getElementById('rpeFeedback').textContent = fb.text;
+        document.getElementById('rpeFeedback').className = 'rpe-feedback ' + fb.class;
+    });
+});
+
 document.getElementById('addSetBtn').addEventListener('click', () => {
     const lastSet = currentExerciseSets[currentExerciseSets.length - 1];
     currentExerciseSets.push({ weight: lastSet.weight, reps: lastSet.reps });
@@ -549,7 +744,8 @@ document.getElementById('saveModal').addEventListener('click', () => {
     if (validSets.length > 0) {
         workout.exercises[currentExercise.index] = {
             name: currentExercise.name,
-            sets: validSets
+            sets: validSets,
+            rpe: currentRPE || null
         };
     } else {
         delete workout.exercises[currentExercise.index];
