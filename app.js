@@ -137,6 +137,7 @@ function getSplitLabel(numDays) {
 let appData = loadData();
 let currentExercise = null;
 let currentExerciseSets = [];
+let selectedDate = new Date(); // For day navigation
 
 function loadData() {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -239,27 +240,36 @@ function showToast(message) {
     }, 2000);
 }
 
-function isTodayTrainingDay() {
-    const todayDow = new Date().getDay(); // 0=Sunday
-    return appData.profile.trainingDays.includes(todayDow);
+function getSelectedDateString() {
+    return selectedDate.toISOString().split('T')[0];
 }
 
-// Get which workout type is scheduled for today based on the rotation
-function getTodayWorkoutType() {
+function isSelectedDateToday() {
+    return getSelectedDateString() === getTodayString();
+}
+
+function isTrainingDay(date) {
+    const dow = date.getDay();
+    return appData.profile.trainingDays.includes(dow);
+}
+
+function isTodayTrainingDay() {
+    return isTrainingDay(selectedDate);
+}
+
+function getWorkoutTypeForDate(date) {
     const profile = appData.profile;
     const trainingDays = profile.trainingDays.sort((a, b) => a - b);
-    const todayDow = new Date().getDay();
+    const dow = date.getDay();
 
-    if (!trainingDays.includes(todayDow)) return null;
+    if (!trainingDays.includes(dow)) return null;
 
-    // Count how many training sessions have passed since start (by calendar weeks)
     const start = new Date(appData.startDate + 'T12:00:00');
-    const today = new Date(getTodayString() + 'T12:00:00');
+    const target = new Date(date.toISOString().split('T')[0] + 'T12:00:00');
 
-    // Count total training days from startDate to today
     let totalTrainingDays = 0;
     const cursor = new Date(start);
-    while (cursor < today) {
+    while (cursor < target) {
         if (trainingDays.includes(cursor.getDay())) {
             totalTrainingDays++;
         }
@@ -271,8 +281,12 @@ function getTodayWorkoutType() {
     return rotation[index];
 }
 
+function getTodayWorkoutType() {
+    return getWorkoutTypeForDate(selectedDate);
+}
+
 function getTodayWorkout() {
-    return appData.workouts.find(w => w.date === getTodayString());
+    return appData.workouts.find(w => w.date === getSelectedDateString());
 }
 
 function getOrCreateTodayWorkout() {
@@ -281,7 +295,7 @@ function getOrCreateTodayWorkout() {
         const type = getTodayWorkoutType();
         if (!type) return null;
         workout = {
-            date: getTodayString(),
+            date: getSelectedDateString(),
             type: type,
             exercises: {},
             completed: false
@@ -391,6 +405,25 @@ function goToStep(step) {
 }
 
 function finishOnboarding() {
+    if (isEditingProfile) {
+        // Update profile but keep workouts
+        appData.profile.name = onboardingData.name;
+        appData.profile.gender = onboardingData.gender;
+        appData.profile.height = onboardingData.height;
+        appData.profile.weight = onboardingData.weight;
+        appData.profile.age = onboardingData.age;
+        appData.profile.goal = onboardingData.goal;
+        appData.profile.trainingDays = onboardingData.trainingDays;
+        if (!appData.profile.weightHistory) appData.profile.weightHistory = [];
+        appData.profile.weightHistory.push({ date: getTodayString(), weight: onboardingData.weight });
+        isEditingProfile = false;
+        document.getElementById('step4Next').textContent = 'Start FitTrack';
+        saveData();
+        startApp();
+        showToast('Profiel bijgewerkt!');
+        return;
+    }
+
     appData = {
         profile: {
             name: onboardingData.name,
@@ -502,23 +535,35 @@ function initTabs() {
 // Workout Tab
 // ============================================
 function renderWorkout() {
-    const today = new Date();
     const name = appData.profile.name.split(' ')[0];
     document.getElementById('greeting').textContent = `${getGreeting()}, ${name}`;
+
+    const dateStr = getSelectedDateString();
+    const d = new Date(dateStr + 'T12:00:00');
+    const todayLabel = isSelectedDateToday() ? 'Vandaag — ' : '';
     document.getElementById('dateDisplay').textContent =
-        `${DAYS_NL[today.getDay()]} ${today.getDate()} ${MONTHS_NL[today.getMonth()]} ${today.getFullYear()}`;
+        `${todayLabel}${DAYS_NL[d.getDay()]} ${d.getDate()} ${MONTHS_NL[d.getMonth()]} ${d.getFullYear()}`;
+
+    // Disable next button if we're on today or in the future
+    const nextBtn = document.getElementById('nextDay');
+    if (nextBtn) {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        nextBtn.disabled = selectedDate >= new Date(getTodayString() + 'T12:00:00');
+        nextBtn.style.opacity = nextBtn.disabled ? '0.3' : '';
+    }
 
     const restMsg = document.getElementById('restDayMessage');
     const workoutContent = document.getElementById('workoutContent');
 
-    if (!isTodayTrainingDay()) {
+    if (!isTrainingDay(selectedDate)) {
         restMsg.style.display = '';
         workoutContent.style.display = 'none';
-        // Show next training day
+        // Show next training day from selectedDate
         const trainingDays = appData.profile.trainingDays;
-        let nextDay = new Date();
+        let nextDay = new Date(selectedDate);
         for (let i = 1; i <= 7; i++) {
-            nextDay = new Date(today.getTime() + i * 86400000);
+            nextDay = new Date(selectedDate.getTime() + i * 86400000);
             if (trainingDays.includes(nextDay.getDay())) break;
         }
         const info = document.getElementById('nextWorkoutInfo');
@@ -1016,10 +1061,14 @@ function renderProfile() {
     document.getElementById('profileDaysDisplay').textContent = dayNames.join(', ');
 }
 
-// Edit profile → re-run onboarding
+// Edit profile
+let isEditingProfile = false;
+
 document.getElementById('editProfileBtn').addEventListener('click', () => {
-    // Pre-fill onboarding with current data
+    isEditingProfile = true;
     const p = appData.profile;
+
+    // Pre-fill all fields
     document.getElementById('profileName').value = p.name;
     document.getElementById('profileHeight').value = p.height;
     document.getElementById('profileWeight').value = p.weight;
@@ -1044,9 +1093,8 @@ document.getElementById('editProfileBtn').addEventListener('click', () => {
     });
     updateDayCount();
 
-    // Keep existing workouts when editing profile
-    const existingWorkouts = appData.workouts;
-    const originalFinish = finishOnboarding;
+    // Change button text
+    document.getElementById('step4Next').textContent = 'Opslaan';
 
     document.getElementById('onboarding').style.display = '';
     document.getElementById('mainApp').style.display = 'none';
@@ -1086,6 +1134,23 @@ document.getElementById('saveWeight').addEventListener('click', () => {
 document.getElementById('weightModal').addEventListener('click', (e) => {
     if (e.target === e.currentTarget) {
         document.getElementById('weightModal').classList.remove('active');
+    }
+});
+
+// ============================================
+// Day Navigation
+// ============================================
+document.getElementById('prevDay').addEventListener('click', () => {
+    selectedDate = new Date(selectedDate.getTime() - 86400000);
+    renderWorkout();
+});
+
+document.getElementById('nextDay').addEventListener('click', () => {
+    const tomorrow = new Date(selectedDate.getTime() + 86400000);
+    const todayEnd = new Date(getTodayString() + 'T23:59:59');
+    if (tomorrow <= todayEnd) {
+        selectedDate = tomorrow;
+        renderWorkout();
     }
 });
 
