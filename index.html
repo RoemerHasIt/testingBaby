@@ -119,7 +119,8 @@
         <nav class="tabs">
             <button class="tab active" data-tab="workout">Workout</button>
             <button class="tab" data-tab="history">Geschiedenis</button>
-            <button class="tab" data-tab="stats">Statistieken</button>
+            <button class="tab" data-tab="stats">Stats</button>
+            <button class="tab" data-tab="badges">Badges</button>
             <button class="tab" data-tab="profile">Profiel</button>
         </nav>
 
@@ -214,11 +215,21 @@
             </div>
         </section>
 
+        <!-- BADGES TAB -->
+        <section id="badges" class="tab-content">
+            <div class="badges-header">
+                <h2 class="badges-title">Badges</h2>
+                <p class="badges-progress" id="badgesProgress"></p>
+            </div>
+            <div id="badgesList" class="badges-grid"></div>
+        </section>
+
         <!-- PROFILE TAB -->
         <section id="profile" class="tab-content">
             <div class="profile-header">
                 <div class="profile-avatar" id="profileAvatar"></div>
                 <h2 id="profileDisplayName" class="editable-name" title="Klik om te bewerken"></h2>
+                <div class="profile-badge-showcase" id="profileBadgeShowcase"></div>
             </div>
             <div class="profile-stats">
                 <div class="profile-stat">

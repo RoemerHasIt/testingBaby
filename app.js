@@ -507,7 +507,8 @@ function initTabs() {
 
             if (tab.dataset.tab === 'stats') renderStats();
             if (tab.dataset.tab === 'history') renderHistory();
-            if (tab.dataset.tab === 'profile') renderProfile();
+            if (tab.dataset.tab === 'badges') renderBadges();
+            if (tab.dataset.tab === 'profile') { renderProfile(); renderBadgeShowcase(); }
         });
     });
 }
@@ -612,6 +613,7 @@ document.getElementById('finishWorkout').addEventListener('click', () => {
         saveData();
         renderWorkout();
         showToast('Workout opgeslagen!');
+        setTimeout(() => checkNewBadges(), 500);
     }
 });
 
@@ -1174,7 +1176,217 @@ document.getElementById('resetProfileBtn').addEventListener('click', () => {
     }
 });
 
-// (Weight modal replaced by inline field editor above)
+// ============================================
+// Badge / Achievement System
+// ============================================
+const BADGES = [
+    // Streak badges
+    { id: 'streak_3',  icon: '&#x1F525;', name: 'Op Stoom',        desc: '3 workouts op rij', category: 'Streak',  check: d => calcStreak(d) >= 3 },
+    { id: 'streak_5',  icon: '&#x26A1;',  name: 'Onverstoorbaar',  desc: '5 workouts op rij', category: 'Streak',  check: d => calcStreak(d) >= 5 },
+    { id: 'streak_10', icon: '&#x1F3C6;', name: 'Machine',         desc: '10 workouts op rij',category: 'Streak',  check: d => calcStreak(d) >= 10 },
+    { id: 'streak_25', icon: '&#x1F48E;', name: 'Legende',         desc: '25 workouts op rij',category: 'Streak',  check: d => calcStreak(d) >= 25 },
+
+    // Total workouts
+    { id: 'total_1',   icon: '&#x1F44A;', name: 'Eerste Stap',     desc: 'Eerste workout voltooid',    category: 'Workouts', check: d => completedCount(d) >= 1 },
+    { id: 'total_10',  icon: '&#x1F4AA;', name: 'Doorzetter',      desc: '10 workouts voltooid',       category: 'Workouts', check: d => completedCount(d) >= 10 },
+    { id: 'total_25',  icon: '&#x1F3CB;', name: 'Gym Rat',         desc: '25 workouts voltooid',       category: 'Workouts', check: d => completedCount(d) >= 25 },
+    { id: 'total_50',  icon: '&#x1F947;', name: 'Half Centurion',  desc: '50 workouts voltooid',       category: 'Workouts', check: d => completedCount(d) >= 50 },
+    { id: 'total_100', icon: '&#x1F451;', name: 'Centurion',       desc: '100 workouts voltooid',      category: 'Workouts', check: d => completedCount(d) >= 100 },
+
+    // Volume badges
+    { id: 'vol_1k',    icon: '&#x1F4A5;', name: '1 Ton Club',      desc: '1.000 kg totaal volume',     category: 'Volume', check: d => totalVolume(d) >= 1000 },
+    { id: 'vol_5k',    icon: '&#x1F30B;', name: 'Kracht Berg',     desc: '5.000 kg totaal volume',     category: 'Volume', check: d => totalVolume(d) >= 5000 },
+    { id: 'vol_10k',   icon: '&#x1F680;', name: 'Raket Kracht',    desc: '10.000 kg totaal volume',    category: 'Volume', check: d => totalVolume(d) >= 10000 },
+    { id: 'vol_25k',   icon: '&#x2B50;',  name: 'Volume Ster',     desc: '25.000 kg totaal volume',    category: 'Volume', check: d => totalVolume(d) >= 25000 },
+    { id: 'vol_50k',   icon: '&#x1F30D;', name: 'Wereldkracht',    desc: '50.000 kg totaal volume',    category: 'Volume', check: d => totalVolume(d) >= 50000 },
+    { id: 'vol_100k',  icon: '&#x1F311;', name: 'Titanium',        desc: '100.000 kg totaal volume',   category: 'Volume', check: d => totalVolume(d) >= 100000 },
+
+    // Weekly volume
+    { id: 'week_5k',   icon: '&#x1F4CA;', name: 'Productieve Week',desc: '5.000 kg in een week',       category: 'Wekelijks', check: d => bestWeekVolume(d) >= 5000 },
+    { id: 'week_10k',  icon: '&#x1F4C8;', name: 'Monster Week',    desc: '10.000 kg in een week',      category: 'Wekelijks', check: d => bestWeekVolume(d) >= 10000 },
+    { id: 'week_20k',  icon: '&#x1F525;', name: 'Beest Modus',     desc: '20.000 kg in een week',      category: 'Wekelijks', check: d => bestWeekVolume(d) >= 20000 },
+
+    // Variety
+    { id: 'all_types', icon: '&#x1F3AF;', name: 'All-Rounder',     desc: 'Alle split types gedaan',    category: 'Variatie', check: d => allTypesCompleted(d) },
+
+    // Personal records
+    { id: 'first_rpe', icon: '&#x1F3AC;', name: 'Zelfkennis',      desc: 'Eerste RPE score gegeven',   category: 'Speciaal', check: d => hasAnyRPE(d) },
+    { id: 'perfect_w', icon: '&#x2728;',  name: 'Perfect Workout',  desc: 'Alle oefeningen in 1 workout', category: 'Speciaal', check: d => hasPerfectWorkout(d) },
+];
+
+// Badge helper functions
+function completedCount(data) {
+    return data.workouts.filter(w => w.completed).length;
+}
+
+function totalVolume(data) {
+    let vol = 0;
+    data.workouts.filter(w => w.completed).forEach(w => {
+        Object.values(w.exercises).forEach(ex => {
+            if (ex.sets) vol += ex.sets.reduce((s, set) => s + (set.weight * set.reps), 0);
+        });
+    });
+    return vol;
+}
+
+function calcStreak(data) {
+    const completed = data.workouts.filter(w => w.completed);
+    const completedDates = new Set(completed.map(w => w.date));
+    const trainingDays = data.profile.trainingDays;
+    let streak = 0;
+    let bestStreak = 0;
+    let checkDate = new Date(getTodayString() + 'T12:00:00');
+
+    // Also check historically for best streak
+    const allDates = completed.map(w => w.date).sort();
+    if (allDates.length === 0) return 0;
+
+    // Current streak from today backwards
+    for (let i = 0; i < 365; i++) {
+        const dateStr = checkDate.toISOString().split('T')[0];
+        const isTraining = trainingDays.includes(checkDate.getDay());
+        if (isTraining) {
+            if (completedDates.has(dateStr)) {
+                streak++;
+            } else if (i > 0) {
+                break;
+            }
+        }
+        checkDate.setDate(checkDate.getDate() - 1);
+    }
+    bestStreak = streak;
+
+    // Also scan all history for best streak
+    let tempStreak = 0;
+    const sorted = completed.map(w => w.date).sort();
+    for (let i = 0; i < sorted.length; i++) {
+        if (i === 0) { tempStreak = 1; continue; }
+        // Check if there's a gap (only count training days between)
+        const prev = new Date(sorted[i-1] + 'T12:00:00');
+        const curr = new Date(sorted[i] + 'T12:00:00');
+        let gap = false;
+        const cursor = new Date(prev.getTime() + 86400000);
+        while (cursor < curr) {
+            if (trainingDays.includes(cursor.getDay())) {
+                gap = true;
+                break;
+            }
+            cursor.setDate(cursor.getDate() + 1);
+        }
+        tempStreak = gap ? 1 : tempStreak + 1;
+        bestStreak = Math.max(bestStreak, tempStreak);
+    }
+    return bestStreak;
+}
+
+function bestWeekVolume(data) {
+    const weekVols = {};
+    data.workouts.filter(w => w.completed).forEach(w => {
+        const week = getWeekLabel(w.date);
+        if (!weekVols[week]) weekVols[week] = 0;
+        Object.values(w.exercises).forEach(ex => {
+            if (ex.sets) weekVols[week] += ex.sets.reduce((s, set) => s + (set.weight * set.reps), 0);
+        });
+    });
+    return Math.max(0, ...Object.values(weekVols));
+}
+
+function allTypesCompleted(data) {
+    const types = new Set(data.workouts.filter(w => w.completed).map(w => w.type));
+    const rotation = getSplitRotation(data.profile.trainingDays.length);
+    return rotation.every(t => types.has(t));
+}
+
+function hasAnyRPE(data) {
+    return data.workouts.some(w => Object.values(w.exercises).some(ex => ex.rpe));
+}
+
+function hasPerfectWorkout(data) {
+    const allPlans = getExercises(data.profile.goal);
+    return data.workouts.filter(w => w.completed).some(w => {
+        const plan = allPlans[w.type];
+        if (!plan) return false;
+        const logged = Object.keys(w.exercises).length;
+        return logged >= plan.exercises.length;
+    });
+}
+
+function getUnlockedBadges() {
+    if (!appData || !appData.workouts) return [];
+    return BADGES.filter(b => b.check(appData));
+}
+
+function renderBadges() {
+    const grid = document.getElementById('badgesList');
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    const unlocked = new Set(getUnlockedBadges().map(b => b.id));
+    const total = BADGES.length;
+    const earned = unlocked.size;
+
+    document.getElementById('badgesProgress').textContent = `${earned} / ${total} behaald`;
+
+    // Group by category
+    const categories = {};
+    BADGES.forEach(b => {
+        if (!categories[b.category]) categories[b.category] = [];
+        categories[b.category].push(b);
+    });
+
+    Object.entries(categories).forEach(([cat, badges]) => {
+        const section = document.createElement('div');
+        section.className = 'badge-category';
+        section.innerHTML = `<h3 class="badge-category-title">${cat}</h3>`;
+
+        const badgeRow = document.createElement('div');
+        badgeRow.className = 'badge-row';
+
+        badges.forEach(badge => {
+            const isUnlocked = unlocked.has(badge.id);
+            const card = document.createElement('div');
+            card.className = `badge-card${isUnlocked ? ' unlocked' : ' locked'}`;
+            card.innerHTML = `
+                <span class="badge-icon">${isUnlocked ? badge.icon : '&#x1F512;'}</span>
+                <span class="badge-name">${badge.name}</span>
+                <span class="badge-desc">${badge.desc}</span>
+            `;
+            badgeRow.appendChild(card);
+        });
+
+        section.appendChild(badgeRow);
+        grid.appendChild(section);
+    });
+}
+
+// Badge showcase on profile (show last 5 earned)
+function renderBadgeShowcase() {
+    const showcase = document.getElementById('profileBadgeShowcase');
+    if (!showcase) return;
+    const earned = getUnlockedBadges();
+    if (earned.length === 0) {
+        showcase.innerHTML = '<span class="showcase-empty">Nog geen badges behaald</span>';
+        return;
+    }
+    showcase.innerHTML = earned.slice(-5).map(b =>
+        `<span class="showcase-badge" title="${b.name}: ${b.desc}">${b.icon}</span>`
+    ).join('');
+}
+
+// Check for new badges after workout completion
+function checkNewBadges() {
+    if (!appData || !appData.profile) return;
+    const prevUnlocked = new Set((appData.unlockedBadgeIds || []));
+    const currentUnlocked = getUnlockedBadges();
+    const newBadges = currentUnlocked.filter(b => !prevUnlocked.has(b.id));
+
+    if (newBadges.length > 0) {
+        appData.unlockedBadgeIds = currentUnlocked.map(b => b.id);
+        saveData();
+        // Show toast for first new badge
+        showToast(`Badge behaald: ${newBadges[0].name}!`);
+    }
+}
 
 // ============================================
 // Day Navigation
