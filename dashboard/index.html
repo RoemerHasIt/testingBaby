@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FitDash - Fitness Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <span class="logo-icon">&#9829;</span>
+            <span class="logo-text">FitDash</span>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="#" class="nav-item active" data-page="overview">
+                <span class="nav-icon">&#9632;</span> Overview
+            </a>
+            <a href="#" class="nav-item" data-page="workouts">
+                <span class="nav-icon">&#9883;</span> Workouts
+            </a>
+            <a href="#" class="nav-item" data-page="progress">
+                <span class="nav-icon">&#9650;</span> Progress
+            </a>
+            <a href="#" class="nav-item" data-page="goals">
+                <span class="nav-icon">&#9733;</span> Goals
+            </a>
+        </nav>
+        <div class="sidebar-profile">
+            <div class="profile-avatar" id="profileAvatar">U</div>
+            <div class="profile-info">
+                <span class="profile-name" id="profileName">User</span>
+                <span class="profile-plan">Pro Plan</span>
+            </div>
+        </div>
+    </aside>
+
+    <main class="main">
+        <header class="topbar">
+            <button class="menu-toggle" id="menuToggle">&#9776;</button>
+            <div class="topbar-left">
+                <h1 class="page-title" id="pageTitle">Overview</h1>
+                <span class="page-date" id="pageDate"></span>
+            </div>
+            <div class="topbar-right">
+                <button class="btn-log" id="btnLogWorkout">+ Log Workout</button>
+            </div>
+        </header>
+
+        <!-- OVERVIEW PAGE -->
+        <section class="page active" id="page-overview">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon cal-icon">&#9832;</div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="totalCalories">0</span>
+                        <span class="stat-label">Calories Burned</span>
+                    </div>
+                    <span class="stat-trend up" id="calTrend">+12%</span>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon workout-icon">&#9883;</div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="totalWorkouts">0</span>
+                        <span class="stat-label">Workouts</span>
+                    </div>
+                    <span class="stat-trend up" id="workoutTrend">+2</span>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon time-icon">&#9201;</div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="totalMinutes">0</span>
+                        <span class="stat-label">Active Minutes</span>
+                    </div>
+                    <span class="stat-trend up" id="minTrend">+8%</span>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon streak-icon">&#9889;</div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="currentStreak">0</span>
+                        <span class="stat-label">Day Streak</span>
+                    </div>
+                    <span class="stat-trend neutral" id="streakTrend">--</span>
+                </div>
+            </div>
+
+            <div class="charts-row">
+                <div class="chart-card wide">
+                    <div class="chart-header">
+                        <h3>Weekly Activity</h3>
+                        <div class="chart-tabs">
+                            <button class="chart-tab active" data-range="week">Week</button>
+                            <button class="chart-tab" data-range="month">Month</button>
+                        </div>
+                    </div>
+                    <canvas id="activityChart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3>Workout Split</h3>
+                    </div>
+                    <canvas id="splitChart"></canvas>
+                </div>
+            </div>
+
+            <div class="content-row">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Recent Workouts</h3>
+                        <a href="#" class="link" data-page="workouts">View All</a>
+                    </div>
+                    <div class="workout-list" id="recentWorkouts"></div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Goals Progress</h3>
+                        <a href="#" class="link" data-page="goals">View All</a>
+                    </div>
+                    <div class="goals-list" id="goalsOverview"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- WORKOUTS PAGE -->
+        <section class="page" id="page-workouts">
+            <div class="workouts-toolbar">
+                <div class="filter-group">
+                    <button class="filter-btn active" data-filter="all">All</button>
+                    <button class="filter-btn" data-filter="strength">Strength</button>
+                    <button class="filter-btn" data-filter="cardio">Cardio</button>
+                    <button class="filter-btn" data-filter="flexibility">Flexibility</button>
+                </div>
+            </div>
+            <div class="workout-list full" id="allWorkouts"></div>
+        </section>
+
+        <!-- PROGRESS PAGE -->
+        <section class="page" id="page-progress">
+            <div class="progress-grid">
+                <div class="chart-card wide">
+                    <div class="chart-header">
+                        <h3>Weight Over Time</h3>
+                    </div>
+                    <canvas id="weightChart"></canvas>
+                </div>
+                <div class="chart-card wide">
+                    <div class="chart-header">
+                        <h3>Strength Progress (Bench Press 1RM Est.)</h3>
+                    </div>
+                    <canvas id="strengthChart"></canvas>
+                </div>
+            </div>
+            <div class="body-stats">
+                <h3>Body Metrics</h3>
+                <div class="metrics-grid" id="bodyMetrics"></div>
+            </div>
+        </section>
+
+        <!-- GOALS PAGE -->
+        <section class="page" id="page-goals">
+            <div class="goals-full" id="goalsFull"></div>
+        </section>
+    </main>
+
+    <!-- LOG WORKOUT MODAL -->
+    <div class="modal-overlay" id="logModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Log Workout</h2>
+                <button class="modal-close" id="modalClose">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Workout Type</label>
+                    <select id="logType" class="form-input">
+                        <option value="strength">Strength</option>
+                        <option value="cardio">Cardio</option>
+                        <option value="flexibility">Flexibility</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Name</label>
+                    <input type="text" id="logName" class="form-input" placeholder="e.g. Push Day, Morning Run">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Duration (min)</label>
+                        <input type="number" id="logDuration" class="form-input" placeholder="45" inputmode="numeric">
+                    </div>
+                    <div class="form-group">
+                        <label>Calories</label>
+                        <input type="number" id="logCalories" class="form-input" placeholder="320" inputmode="numeric">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Notes (optional)</label>
+                    <textarea id="logNotes" class="form-input" rows="2" placeholder="How did it feel?"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" id="modalCancel">Cancel</button>
+                <button class="btn-primary" id="modalSave">Save Workout</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
