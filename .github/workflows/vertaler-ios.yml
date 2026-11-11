@@ -1,0 +1,25 @@
+name: Vertaler iOS build
+
+on:
+  push:
+    paths:
+      - "vertaler/**"
+      - ".github/workflows/vertaler-ios.yml"
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate project
+        working-directory: vertaler
+        run: xcodegen generate
+      - name: Build for simulator
+        working-directory: vertaler
+        run: |
+          set -o pipefail
+          xcodebuild -project Vertaler.xcodeproj -scheme Vertaler \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO build | tail -n 60

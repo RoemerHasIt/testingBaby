@@ -1,0 +1,25 @@
+name: Vertaler
+options:
+  bundleIdPrefix: nl.vertaler
+  deploymentTarget:
+    iOS: "18.0"
+targets:
+  Vertaler:
+    type: application
+    platform: iOS
+    sources: [Vertaler]
+    info:
+      path: Vertaler/Info.plist
+      properties:
+        CFBundleDisplayName: Vertaler
+        NSMicrophoneUsageDescription: De microfoon is nodig om te horen wat je zegt.
+        NSSpeechRecognitionUsageDescription: Spraakherkenning zet wat je zegt om in tekst, zodat het vertaald kan worden.
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+    settings:
+      base:
+        SWIFT_VERSION: "5.0"
+        PRODUCT_BUNDLE_IDENTIFIER: nl.vertaler.app
+        TARGETED_DEVICE_FAMILY: "1"
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
